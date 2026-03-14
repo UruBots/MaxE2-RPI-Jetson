@@ -1,0 +1,147 @@
+detector_node:
+  ros__parameters:
+    camera_index: 0
+    frame_width: 640
+    frame_height: 480
+    fps: 30.0
+    lower_h: 0
+    lower_s: 120
+    lower_v: 70
+    upper_h: 10
+    upper_s: 255
+    upper_v: 255
+    lower_h2: 170
+    upper_h2: 180
+    use_second_range: true
+    min_contour_area: 500
+    publish_debug_image: true
+    gstreamer_pipeline: 'nvarguscamerasrc ! video/x-raw(memory:NVMM), width=(int)640, height=(int)480, framerate=(fraction)30/1 ! nvvidconv flip-method=0 ! video/x-raw, width=(int)640, height=(int)480, format=(string)BGRx ! videoconvert ! video/x-raw, format=(string)BGR ! appsink'
+
+shape_detector_node:
+  ros__parameters:
+    camera_index: 0
+    frame_width: 640
+    frame_height: 480
+    fps: 30.0
+    gstreamer_pipeline: 'nvarguscamerasrc ! video/x-raw(memory:NVMM), width=(int)640, height=(int)480, framerate=(fraction)30/1 ! nvvidconv flip-method=0 ! video/x-raw, width=(int)640, height=(int)480, format=(string)BGRx ! videoconvert ! video/x-raw, format=(string)BGR ! appsink'
+    publish_debug_image: true
+    use_camera_topic: false
+    lower_h: 0
+    lower_s: 80
+    lower_v: 80
+    upper_h: 180
+    upper_s: 255
+    upper_v: 255
+    min_contour_area: 800
+    max_contour_area: 100000
+    blur_kernel: 5
+    morph_kernel: 5
+    circularity_threshold: 0.7
+    square_aspect_threshold: 0.25
+    approx_epsilon_ratio: 0.03
+    target_shape: ''
+
+line_detector_node:
+  ros__parameters:
+    camera_index: 0
+    frame_width: 640
+    frame_height: 480
+    fps: 30.0
+    gstreamer_pipeline: 'nvarguscamerasrc ! video/x-raw(memory:NVMM), width=(int)640, height=(int)480, framerate=(fraction)30/1 ! nvvidconv flip-method=0 ! video/x-raw, width=(int)640, height=(int)480, format=(string)BGRx ! videoconvert ! video/x-raw, format=(string)BGR ! appsink'
+    publish_debug_image: true
+    use_camera_topic: false
+    roi_height_ratio: 0.35
+    threshold_mode: 'adaptive'
+    binary_threshold: 60
+    adaptive_block_size: 25
+    adaptive_c: 8
+    invert_binary: true
+    blur_kernel: 5
+    morph_kernel: 5
+    min_line_area: 200
+    use_hsv: false
+    line_lower_h: 0
+    line_lower_s: 0
+    line_lower_v: 0
+    line_upper_h: 180
+    line_upper_s: 50
+    line_upper_v: 80
+
+tracker_node:
+  ros__parameters:
+    linear_speed: 0.15
+    angular_gain: 1.0
+    dead_zone: 0.08
+    min_area: 1000
+    max_area: 50000
+    control_rate: 30.0
+    timeout: 0.5
+    search_enabled: false
+    search_angular_speed: 0.3
+
+line_tracker_node:
+  ros__parameters:
+    linear_speed: 0.12
+    angular_gain: 1.5
+    angle_gain: 0.01
+    dead_zone: 0.05
+    control_rate: 30.0
+    timeout: 0.5
+    lost_angular_speed: 0.4
+    lost_behavior: 'stop'
+
+apriltag_detector_node:
+  ros__parameters:
+    camera_index: 0
+    frame_width: 640
+    frame_height: 480
+    fps: 30.0
+    gstreamer_pipeline: 'nvarguscamerasrc ! video/x-raw(memory:NVMM), width=(int)640, height=(int)480, framerate=(fraction)30/1 ! nvvidconv flip-method=0 ! video/x-raw, width=(int)640, height=(int)480, format=(string)BGRx ! videoconvert ! video/x-raw, format=(string)BGR ! appsink'
+    use_camera_topic: false
+    publish_debug_image: true
+    tag_family: 'tag36h11'
+    nthreads: 4
+    quad_decimate: 2.0
+    quad_sigma: 0.0
+    decode_sharpening: 0.25
+    refine_edges: true
+
+action_executor_node:
+  ros__parameters:
+    tag_action_map: '0:follow,1:stop,2:spin_left,3:spin_right,4:reverse,5:sprint,6:dance'
+    default_action: 'stop'
+    action_timeout: 2.0
+    control_rate: 30.0
+    follow_linear_speed: 0.15
+    follow_angular_gain: 1.0
+    follow_dead_zone: 0.08
+    follow_min_size: 30.0
+    follow_max_size: 200.0
+    sprint_speed: 0.4
+    reverse_speed: 0.15
+    spin_speed: 0.5
+    dance_speed: 0.6
+    dance_period: 0.5
+
+debug_view_node:
+  ros__parameters:
+    output_topic: '/max/debug_view'
+    show_fps: true
+    show_panel: true
+    show_crosshair: true
+    show_cmd_vel: true
+    panel_opacity: 0.7
+    detection_timeout: 1.0
+
+dynamixel_node:
+  ros__parameters:
+    port: '/dev/ttyACM0'
+    baudrate: 1000000
+    protocol_version: 2.0
+    left_wheel_id: 1
+    right_wheel_id: 2
+    wheel_separation: 0.16
+    max_velocity: 200
+    state_publish_rate: 10.0
+    invert_left: false
+    invert_right: true

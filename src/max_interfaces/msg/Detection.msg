@@ -1,0 +1,9 @@
+std_msgs/Header header
+bool detected
+int32 cx
+int32 cy
+int32 area
+int32 frame_width
+int32 frame_height
+float32 confidence
+string label

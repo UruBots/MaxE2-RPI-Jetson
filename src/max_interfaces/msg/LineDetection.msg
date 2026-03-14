@@ -1,0 +1,10 @@
+std_msgs/Header header
+bool detected
+float32 offset_x
+float32 angle
+int32 cx
+int32 cy
+int32 line_width
+int32 frame_width
+int32 frame_height
+int32 roi_y_start

@@ -1,0 +1,10 @@
+int32 tag_id
+string tag_family
+int32 cx
+int32 cy
+float64 size_px
+float64 decision_margin
+int32 hamming
+float64[8] corners
+int32 frame_width
+int32 frame_height

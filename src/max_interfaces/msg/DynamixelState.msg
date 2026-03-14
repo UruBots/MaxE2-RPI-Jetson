@@ -1,0 +1,4 @@
+uint8 id
+int32 present_position
+int32 present_velocity
+uint16 present_temperature
