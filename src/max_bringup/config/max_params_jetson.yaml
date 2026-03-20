@@ -123,6 +123,11 @@ action_executor_node:
     dance_speed: 0.6
     dance_period: 0.5
 
+teleop_twist_keyboard:
+  ros__parameters:
+    speed: 0.2
+    turn: 0.8
+
 debug_view_node:
   ros__parameters:
     output_topic: '/max/debug_view'

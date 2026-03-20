@@ -763,6 +763,7 @@ Mensajes y servicios custom:
 - **`shape_track_launch.py`** - Tracking por formas (shape_detector + tracker + dynamixel + debug_view)
 - **`line_follow_launch.py`** - Seguimiento de línea (line_detector + line_tracker + dynamixel + debug_view)
 - **`apriltag_action_launch.py`** - Acciones por AprilTag (apriltag_detector + action_executor + dynamixel + debug_view)
+- **`teleop_launch.py`** - Teleoperación por teclado (`teleop_twist_keyboard` + `dynamixel_node`)
 - **`vision_only_launch.py`** - Solo visión y control (sin hardware, para testing)
 
 **Configuración:**
@@ -770,11 +771,25 @@ Mensajes y servicios custom:
 - **`config/max_params.yaml`** - Parámetros para RPi 4B
 - **`config/max_params_jetson.yaml`** - Parámetros para Jetson Nano (incluye GStreamer pipeline)
 
+#### Teleoperación (teclado)
+
+`dynamixel_node` ya escucha `/cmd_vel`. El paquete estándar `teleop_twist_keyboard` publica en ese mismo topic, así que basta con lanzar:
+
+```bash
+ros2 launch max_bringup teleop_launch.py
+```
+
+Velocidades iniciales en YAML (`teleop_twist_keyboard`: `speed`, `turn`). En el nodo puedes ajustar con **q/z** (±10% todo), **w/x** (solo lineal), **e/c** (solo angular). Layout típico: **i** avanza, **,** retrocede, **j**/**l** giran, **k** para.
+
+**Importante:** no ejecutes a la vez `teleop_launch` y nodos autónomos (`tracker_node`, `line_tracker_node`, `action_executor_node`): se pisan en `/cmd_vel`. Para mezclar manual + autónomo habría que usar algo como `twist_mux` y topics distintos (`cmd_vel_teleop`, `cmd_vel_nav`).
+
+Para mando (joystick), instala `ros-humble-teleop-twist-joy`, configura un `joy_node` y remapea su salida a `/cmd_vel` (o al topic que use un mux).
+
 ### Build y ejecución
 
 ```bash
 # Prerequisitos
-sudo apt install ros-humble-cv-bridge ros-humble-image-transport
+sudo apt install ros-humble-cv-bridge ros-humble-image-transport ros-humble-teleop-twist-keyboard
 pip3 install dynamixel-sdk pupil-apriltags
 
 # Build
@@ -801,6 +816,10 @@ ros2 launch max_bringup apriltag_action_launch.py \
 # Solo visión (sin hardware)
 ros2 launch max_bringup vision_only_launch.py
 
+# Teleoperación manual (teclado → /cmd_vel → ruedas)
+# No combines con tracker/line_tracker/action_executor: todos publican /cmd_vel.
+ros2 launch max_bringup teleop_launch.py
+
 # Nodos individuales
 ros2 run max_vision detector_node
 ros2 run max_vision apriltag_detector_node
@@ -808,6 +827,7 @@ ros2 run max_vision hsv_calibrator
 ros2 run max_control tracker_node
 ros2 run max_control action_executor_node
 ros2 run max_driver dynamixel_node --ros-args -p port:=/dev/ttyACM0
+ros2 run teleop_twist_keyboard teleop_twist_keyboard
 
 # Visualizar debug view
 ros2 run rqt_image_view rqt_image_view /max/debug_view
