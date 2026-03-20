@@ -11,6 +11,7 @@ import math
 import threading
 
 import rclpy
+from rcl_interfaces.msg import ParameterDescriptor, ParameterType
 from rclpy.node import Node
 from sensor_msgs.msg import JointState
 from std_msgs.msg import Header
@@ -43,13 +44,30 @@ class EngineerJointNode(Node):
         self.declare_parameter('baudrate', 1000000)
         self.declare_parameter('protocol_version', 2.0)
         self.declare_parameter('state_publish_rate', 30.0)
-        self.declare_parameter('joint_ids', [1, 2, 3, 4, 5, 6, 7, 8])
-        self.declare_parameter('joint_names', [
-            'joint_1', 'joint_2', 'joint_3', 'joint_4',
-            'joint_5', 'joint_6', 'joint_7', 'joint_8',
-        ])
-        self.declare_parameter('joint_invert', [])
-        self.declare_parameter('joint_offset_rad', [])
+        self.declare_parameter(
+            'joint_ids',
+            [1, 2, 3, 4, 5, 6, 7, 8],
+            ParameterDescriptor(type=ParameterType.PARAMETER_INTEGER_ARRAY),
+        )
+        self.declare_parameter(
+            'joint_names',
+            [
+                'joint_1', 'joint_2', 'joint_3', 'joint_4',
+                'joint_5', 'joint_6', 'joint_7', 'joint_8',
+            ],
+            ParameterDescriptor(type=ParameterType.PARAMETER_STRING_ARRAY),
+        )
+        # [] sin tipo explícito puede quedar "sin inicializar" al mezclar con YAML (rclpy Humble)
+        self.declare_parameter(
+            'joint_invert',
+            [],
+            ParameterDescriptor(type=ParameterType.PARAMETER_BOOL_ARRAY),
+        )
+        self.declare_parameter(
+            'joint_offset_rad',
+            [],
+            ParameterDescriptor(type=ParameterType.PARAMETER_DOUBLE_ARRAY),
+        )
         self.declare_parameter('positions_in_radians', True)
         self.declare_parameter('ticks_per_revolution', DEFAULT_TICKS_PER_REV)
         self.declare_parameter('command_topic', '/max/joint_command')

@@ -15,6 +15,7 @@ import termios
 import tty
 
 import rclpy
+from rcl_interfaces.msg import ParameterDescriptor, ParameterType
 from rclpy.node import Node
 from sensor_msgs.msg import JointState
 from std_msgs.msg import Header
@@ -38,7 +39,11 @@ class JointTeleopNode(Node):
 
         self.declare_parameter('command_topic', '/max/joint_command')
         self.declare_parameter('joint_states_topic', '/joint_states')
-        self.declare_parameter('joint_names', [])
+        self.declare_parameter(
+            'joint_names',
+            [],
+            ParameterDescriptor(type=ParameterType.PARAMETER_STRING_ARRAY),
+        )
         self.declare_parameter('step_rad', 0.05)
         self.declare_parameter('republish_rate_hz', 0.0)
         # Si joint_names viene del YAML y es true, espera el primer /joint_states para copiar pose inicial.
