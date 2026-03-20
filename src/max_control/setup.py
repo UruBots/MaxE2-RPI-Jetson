@@ -21,6 +21,7 @@ setup(
             'tracker_node = max_control.tracker_node:main',
             'line_tracker_node = max_control.line_tracker_node:main',
             'action_executor_node = max_control.action_executor_node:main',
+            'joint_teleop_node = max_control.joint_teleop_node:main',
         ],
     },
 )

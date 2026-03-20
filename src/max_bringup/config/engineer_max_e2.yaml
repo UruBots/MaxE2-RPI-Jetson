@@ -1,0 +1,57 @@
+# ROBOTIS Engineer MAX-E2 (u otro humanoide XL430/2XL430 + CM-550)
+#
+# IMPORTANTE: Ajusta joint_ids y joint_names al mapa real de tu montaje
+# (Dynamixel Wizard 2.0 o manual de ensamblaje). Los valores aquí son PLANTILLA.
+#
+# Comando ROS2: publica sensor_msgs/JointState en /max/joint_command
+# Estado: /joint_states (mismos nombres, posiciones en radianes si positions_in_radians=true)
+
+engineer_joint_node:
+  ros__parameters:
+    port: '/dev/ttyACM0'
+    baudrate: 1000000
+    protocol_version: 2.0
+    state_publish_rate: 30.0
+    command_topic: '/max/joint_command'
+    positions_in_radians: true
+    ticks_per_revolution: 4096
+    auto_enable_torque: true
+    set_position_mode_on_start: true
+    profile_velocity: 64
+    disable_torque_on_shutdown: true
+
+    # IDs Dynamixel en el mismo orden que los nombres (ejemplo: 18 motores)
+    joint_ids: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
+    joint_names:
+      - head_pan
+      - head_tilt
+      - l_shoulder_pitch
+      - l_shoulder_roll
+      - l_elbow
+      - r_shoulder_pitch
+      - r_shoulder_roll
+      - r_elbow
+      - l_hip_yaw
+      - l_hip_roll
+      - l_hip_pitch
+      - l_knee
+      - l_ankle
+      - r_hip_yaw
+      - r_hip_roll
+      - r_hip_pitch
+      - r_knee
+      - r_ankle
+
+    # Opcional: invertir sentido o calibrar cero (misma longitud que joint_ids o vacío)
+    joint_invert: []
+    joint_offset_rad: []
+
+# Teleop por teclado (mismo archivo; joint_names vacío = mismos nombres que publica engineer_joint_node)
+joint_teleop_node:
+  ros__parameters:
+    command_topic: '/max/joint_command'
+    joint_states_topic: '/joint_states'
+    joint_names: []
+    step_rad: 0.05
+    republish_rate_hz: 0.0
+    seed_from_joint_states: true

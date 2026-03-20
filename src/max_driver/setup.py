@@ -19,6 +19,7 @@ setup(
     entry_points={
         'console_scripts': [
             'dynamixel_node = max_driver.dynamixel_node:main',
+            'engineer_joint_node = max_driver.engineer_joint_node:main',
         ],
     },
 )

@@ -737,6 +737,9 @@ Mensajes y servicios custom:
   - Suscribe: `/max/line_detection`
   - Publica: `/cmd_vel`
 
+- **`joint_teleop_node`** - Teleop por teclado que publica `sensor_msgs/JointState` en `/max/joint_command` (humanoide Engineer)
+  - Úsalo junto a `engineer_joint_node`; parámetros en `engineer_max_e2.yaml` (`joint_teleop_node`)
+
 - **`action_executor_node`** - Mapea AprilTag IDs a acciones del robot
   - Suscribe: `/max/apriltag_detections`
   - Publica: `/cmd_vel`, `/max/current_action` (std_msgs/String)
@@ -755,6 +758,14 @@ Mensajes y servicios custom:
   - Cinemática diferencial: Twist → velocidades de rueda izquierda/derecha
   - Graceful degradation: puede correr sin hardware (para testing)
 
+- **`engineer_joint_node`** - Control multi-articular para humanoides **ROBOTIS Engineer** (p. ej. **MAX-E2**) y otros brazos/piernas con XL430/2XL430
+  - Suscribe: `/max/joint_command` (`sensor_msgs/JointState`, usa el campo **`position`** como objetivo)
+  - Publica: `/joint_states` (`sensor_msgs/JointState` con posición/velocidad leídas del bus)
+  - Servicios: `/max/engineer/set_torque`, `/max/engineer/set_operating_mode`
+  - Por defecto: modo **Position** (3), torque ON, conversión **radianes ↔ ticks** (4096/rev)
+  - **No** ejecutes a la vez `dynamixel_node` y `engineer_joint_node` sobre el mismo CM-550 (conflicto de bus / comandos).
+  - Debes alinear **`joint_ids`** y **`joint_names`** con tu ensamblaje (Dynamixel Wizard 2.0); la plantilla está en `config/engineer_max_e2.yaml`.
+
 ### max_bringup
 
 **Launch files:**
@@ -764,12 +775,15 @@ Mensajes y servicios custom:
 - **`line_follow_launch.py`** - Seguimiento de línea (line_detector + line_tracker + dynamixel + debug_view)
 - **`apriltag_action_launch.py`** - Acciones por AprilTag (apriltag_detector + action_executor + dynamixel + debug_view)
 - **`teleop_launch.py`** - Teleoperación por teclado (`teleop_twist_keyboard` + `dynamixel_node`)
+- **`engineer_joint_launch.py`** - Solo control articulaciones Engineer / MAX-E2 (`engineer_joint_node`)
+- **`engineer_joints_teleop_launch.py`** - `engineer_joint_node` + `joint_teleop_node` (mismo `engineer_max_e2.yaml`)
 - **`vision_only_launch.py`** - Solo visión y control (sin hardware, para testing)
 
 **Configuración:**
 
 - **`config/max_params.yaml`** - Parámetros para RPi 4B
 - **`config/max_params_jetson.yaml`** - Parámetros para Jetson Nano (incluye GStreamer pipeline)
+- **`config/engineer_max_e2.yaml`** - Plantilla `joint_ids` / `joint_names` para humanoide Engineer (ajustar a tu robot)
 
 #### Teleoperación (teclado)
 
@@ -784,6 +798,31 @@ Velocidades iniciales en YAML (`teleop_twist_keyboard`: `speed`, `turn`). En el 
 **Importante:** no ejecutes a la vez `teleop_launch` y nodos autónomos (`tracker_node`, `line_tracker_node`, `action_executor_node`): se pisan en `/cmd_vel`. Para mezclar manual + autónomo habría que usar algo como `twist_mux` y topics distintos (`cmd_vel_teleop`, `cmd_vel_nav`).
 
 Para mando (joystick), instala `ros-humble-teleop-twist-joy`, configura un `joy_node` y remapea su salida a `/cmd_vel` (o al topic que use un mux).
+
+#### Control ROS2 del humanoide Engineer (MAX-E2)
+
+```bash
+# Tras calibrar IDs/nombres en config/engineer_max_e2.yaml
+ros2 launch max_bringup engineer_joint_launch.py
+
+# En otra terminal: teleop por teclado (publica JointState en /max/joint_command)
+ros2 run max_control joint_teleop_node --ros-args \
+  --params-file $(ros2 pkg prefix max_bringup)/share/max_bringup/config/engineer_max_e2.yaml
+
+# O driver + teleop en un solo launch (misma TTY: el teclado va al teleop)
+ros2 launch max_bringup engineer_joints_teleop_launch.py
+
+# Ver estado de articulaciones
+ros2 topic echo /joint_states
+
+# Enviar objetivo (ejemplo: un solo joint; nombres deben coincidir con el YAML)
+ros2 topic pub --once /max/joint_command sensor_msgs/msg/JointState \
+  "{name: ['l_knee'], position: [0.5], velocity: [], effort: []}"
+```
+
+**`joint_teleop_node`** (teclas `[` `]` cambiar articulación, `=` / `-` paso en rad, `0` cero, `g` copiar desde `/joint_states`, `h` ayuda, `q` salir). Requiere **terminal interactivo** (TTY). Con `joint_names: []` en el YAML, toma nombres y pose inicial del primer `/joint_states` que publica `engineer_joint_node`.
+
+Para teleop más avanzado: **RViz**, **MoveIt 2**, **joint_trajectory_controller**. El driver `engineer_joint_node` es la capa **hardware → ROS**.
 
 ### Build y ejecución
 
@@ -820,13 +859,19 @@ ros2 launch max_bringup vision_only_launch.py
 # No combines con tracker/line_tracker/action_executor: todos publican /cmd_vel.
 ros2 launch max_bringup teleop_launch.py
 
+# Humanoide Engineer / MAX-E2 (articulaciones → /max/joint_command)
+ros2 launch max_bringup engineer_joint_launch.py
+
 # Nodos individuales
 ros2 run max_vision detector_node
 ros2 run max_vision apriltag_detector_node
 ros2 run max_vision hsv_calibrator
 ros2 run max_control tracker_node
 ros2 run max_control action_executor_node
+ros2 run max_control joint_teleop_node
 ros2 run max_driver dynamixel_node --ros-args -p port:=/dev/ttyACM0
+ros2 run max_driver engineer_joint_node --ros-args \
+  --params-file $(ros2 pkg prefix max_bringup)/share/max_bringup/config/engineer_max_e2.yaml
 ros2 run teleop_twist_keyboard teleop_twist_keyboard
 
 # Visualizar debug view
