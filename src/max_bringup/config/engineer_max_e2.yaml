@@ -15,6 +15,9 @@ engineer_joint_node:
     command_topic: '/max/joint_command'
     positions_in_radians: true
     ticks_per_revolution: 4096
+    # XL430 en single-turn suele tener el "centro" cerca de 2048 ticks.
+    # Ajusta estos valores con tu robot real antes de mover mas de una articulacion.
+    joint_center_ticks: [2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048]
     auto_enable_torque: true
     set_position_mode_on_start: true
     profile_velocity: 64

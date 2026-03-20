@@ -36,6 +36,9 @@ ADDR_PRESENT_VELOCITY = 128
 
 MODE_POSITION = 3
 DEFAULT_TICKS_PER_REV = 4096
+DEFAULT_CENTER_TICK = DEFAULT_TICKS_PER_REV // 2
+XL430_VELOCITY_RPM_PER_LSB = 0.229
+RPM_TO_RAD_PER_SEC = (2.0 * math.pi) / 60.0
 
 
 class EngineerJointNode(Node):
@@ -86,6 +89,24 @@ class EngineerJointNode(Node):
         )
         self.declare_parameter('positions_in_radians', True)
         self.declare_parameter('ticks_per_revolution', DEFAULT_TICKS_PER_REV)
+        self.declare_parameter(
+            'joint_center_ticks',
+            [],
+            ParameterDescriptor(type=ParameterType.PARAMETER_INTEGER_ARRAY),
+            ignore_override=True,
+        )
+        self.declare_parameter(
+            'joint_min_ticks',
+            [],
+            ParameterDescriptor(type=ParameterType.PARAMETER_INTEGER_ARRAY),
+            ignore_override=True,
+        )
+        self.declare_parameter(
+            'joint_max_ticks',
+            [],
+            ParameterDescriptor(type=ParameterType.PARAMETER_INTEGER_ARRAY),
+            ignore_override=True,
+        )
         self.declare_parameter('command_topic', '/max/joint_command')
         self.declare_parameter('auto_enable_torque', True)
         self.declare_parameter('set_position_mode_on_start', True)
@@ -114,6 +135,22 @@ class EngineerJointNode(Node):
         self._ticks_per_rev = max(
             1, self.get_parameter('ticks_per_revolution').get_parameter_value().integer_value
         )
+        center_ticks = list(
+            self.get_parameter('joint_center_ticks').get_parameter_value().integer_array_value
+        )
+        min_ticks = list(
+            self.get_parameter('joint_min_ticks').get_parameter_value().integer_array_value
+        )
+        max_ticks = list(
+            self.get_parameter('joint_max_ticks').get_parameter_value().integer_array_value
+        )
+        self._joint_center_ticks = self._pad_int_list(
+            center_ticks, len(self._joint_ids), self._ticks_per_rev // 2
+        )
+        self._joint_min_ticks = self._pad_int_list(min_ticks, len(self._joint_ids), 0)
+        self._joint_max_ticks = self._pad_int_list(
+            max_ticks, len(self._joint_ids), self._ticks_per_rev - 1
+        )
         self._command_topic = self.get_parameter('command_topic').get_parameter_value().string_value
         self._auto_torque = self.get_parameter('auto_enable_torque').get_parameter_value().bool_value
         self._set_pos_mode = (
@@ -130,6 +167,14 @@ class EngineerJointNode(Node):
                 'deben tener la misma longitud'
             )
             raise ValueError('joint_ids / joint_names mismatch')
+        for idx, jid in enumerate(self._joint_ids):
+            if self._joint_min_ticks[idx] > self._joint_max_ticks[idx]:
+                raise ValueError(f'joint {jid}: joint_min_ticks > joint_max_ticks')
+            if not (self._joint_min_ticks[idx] <= self._joint_center_ticks[idx] <= self._joint_max_ticks[idx]):
+                raise ValueError(
+                    f'joint {jid}: joint_center_ticks fuera de [{self._joint_min_ticks[idx]}, '
+                    f'{self._joint_max_ticks[idx]}]'
+                )
 
         self._name_to_id = {n: i for n, i in zip(self._joint_names, self._joint_ids)}
         self._lock = threading.Lock()
@@ -174,6 +219,49 @@ class EngineerJointNode(Node):
             out.append(default)
         return out
 
+    @staticmethod
+    def _pad_int_list(lst, n, default):
+        out = [int(v) for v in list(lst[:n])]
+        while len(out) < n:
+            out.append(int(default))
+        return out
+
+    def _format_sdk_error(self, comm, err):
+        parts = []
+        if comm != COMM_SUCCESS:
+            try:
+                parts.append(self._packet_handler.getTxRxResult(comm))
+            except Exception:
+                parts.append(f'comm={comm}')
+        if err != 0:
+            try:
+                parts.append(self._packet_handler.getRxPacketError(err))
+            except Exception:
+                parts.append(f'err={err}')
+        return ', '.join(parts) if parts else 'ok'
+
+    def _write1_checked(self, jid, address, value, action):
+        comm, err = self._packet_handler.write1ByteTxRx(
+            self._port_handler, jid, address, value
+        )
+        if comm != COMM_SUCCESS or err != 0:
+            self.get_logger().error(
+                f'id={jid} {action} fallo en addr {address}: {self._format_sdk_error(comm, err)}'
+            )
+            return False
+        return True
+
+    def _write4_checked(self, jid, address, value, action):
+        comm, err = self._packet_handler.write4ByteTxRx(
+            self._port_handler, jid, address, value & 0xFFFFFFFF
+        )
+        if comm != COMM_SUCCESS or err != 0:
+            self.get_logger().error(
+                f'id={jid} {action} fallo en addr {address}: {self._format_sdk_error(comm, err)}'
+            )
+            return False
+        return True
+
     def _open_and_configure(self):
         self._port_handler = PortHandler(self._port)
         self._packet_handler = PacketHandler(self._protocol_version)
@@ -187,34 +275,53 @@ class EngineerJointNode(Node):
         self._port_open = True
 
         with self._lock:
+            configured = 0
             for jid in self._joint_ids:
+                ok = True
                 if self._set_pos_mode:
-                    self._packet_handler.write1ByteTxRx(
-                        self._port_handler, jid, ADDR_TORQUE_ENABLE, 0
+                    ok &= self._write1_checked(
+                        jid, ADDR_TORQUE_ENABLE, 0, 'deshabilitar torque antes de position mode'
                     )
-                    self._packet_handler.write1ByteTxRx(
-                        self._port_handler, jid, ADDR_OPERATING_MODE, MODE_POSITION
+                    ok &= self._write1_checked(
+                        jid, ADDR_OPERATING_MODE, MODE_POSITION, 'configurar position mode'
                     )
                 if self._auto_torque:
-                    self._packet_handler.write1ByteTxRx(
-                        self._port_handler, jid, ADDR_TORQUE_ENABLE, 1
+                    ok &= self._write1_checked(
+                        jid, ADDR_TORQUE_ENABLE, 1, 'habilitar torque'
                     )
                 if self._profile_velocity > 0:
-                    self._packet_handler.write4ByteTxRx(
-                        self._port_handler, jid, ADDR_PROFILE_VELOCITY,
-                        self._profile_velocity & 0xFFFFFFFF
+                    ok &= self._write4_checked(
+                        jid, ADDR_PROFILE_VELOCITY, self._profile_velocity,
+                        'configurar profile velocity'
                     )
+                if ok:
+                    configured += 1
+
+        if configured == 0:
+            self.get_logger().error(
+                'No se pudo configurar ningun servo. Verifica CM-550 en Manage mode, '
+                'Bypass Port=USB, baudrate e IDs.'
+            )
+            self._port_handler.closePort()
+            self._port_open = False
+            return
+        if configured != len(self._joint_ids):
+            self.get_logger().warn(
+                f'Solo se configuraron {configured}/{len(self._joint_ids)} articulaciones'
+            )
 
     def _rad_to_raw(self, joint_idx, rad):
         r = rad + self._joint_offset_rad[joint_idx]
         if self._joint_invert[joint_idx]:
             r = -r
-        raw = int(round((r / (2.0 * math.pi)) * float(self._ticks_per_rev)))
-        raw = max(0, min(self._ticks_per_rev - 1, raw))
+        center = self._joint_center_ticks[joint_idx]
+        raw = int(round(center + (r / (2.0 * math.pi)) * float(self._ticks_per_rev)))
+        raw = max(self._joint_min_ticks[joint_idx], min(self._joint_max_ticks[joint_idx], raw))
         return raw
 
     def _raw_to_rad(self, joint_idx, raw):
-        rad = (float(raw) / float(self._ticks_per_rev)) * (2.0 * math.pi)
+        center = self._joint_center_ticks[joint_idx]
+        rad = ((float(raw) - float(center)) / float(self._ticks_per_rev)) * (2.0 * math.pi)
         if self._joint_invert[joint_idx]:
             rad = -rad
         rad -= self._joint_offset_rad[joint_idx]
@@ -236,9 +343,9 @@ class EngineerJointNode(Node):
                     raw = self._rad_to_raw(idx, float(pos))
                 else:
                     raw = int(round(float(pos)))
-                    raw = max(0, min(self._ticks_per_rev - 1, raw))
-                self._packet_handler.write4ByteTxRx(
-                    self._port_handler, jid, ADDR_GOAL_POSITION, raw & 0xFFFFFFFF
+                    raw = max(self._joint_min_ticks[idx], min(self._joint_max_ticks[idx], raw))
+                self._write4_checked(
+                    jid, ADDR_GOAL_POSITION, raw, 'escribir goal position'
                 )
 
     def _publish_states(self):
@@ -276,7 +383,7 @@ class EngineerJointNode(Node):
                     positions.append(float(pos))
                 if self._positions_in_radians:
                     velocities.append(
-                        (float(vel) / float(self._ticks_per_rev)) * (2.0 * math.pi)
+                        float(vel) * XL430_VELOCITY_RPM_PER_LSB * RPM_TO_RAD_PER_SEC
                     )
                 else:
                     velocities.append(float(vel))

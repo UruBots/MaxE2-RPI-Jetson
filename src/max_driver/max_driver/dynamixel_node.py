@@ -20,6 +20,7 @@ ADDR_PRESENT_POSITION = 132
 ADDR_PRESENT_VELOCITY = 128
 ADDR_PRESENT_TEMPERATURE = 146
 
+MODE_VELOCITY = 1
 
 class DynamixelNode(Node):
     """ROS2 node for Dynamixel servo control via CM-550."""
@@ -65,6 +66,7 @@ class DynamixelNode(Node):
         self.declare_parameter('state_publish_rate', 10.0)
         self.declare_parameter('invert_left', False)
         self.declare_parameter('invert_right', True)
+        self.declare_parameter('set_velocity_mode_on_start', True)
 
         self._port = self.get_parameter('port').get_parameter_value().string_value
         self._baudrate = self.get_parameter('baudrate').get_parameter_value().integer_value
@@ -76,6 +78,34 @@ class DynamixelNode(Node):
         self._state_publish_rate = self.get_parameter('state_publish_rate').get_parameter_value().double_value
         self._invert_left = self.get_parameter('invert_left').get_parameter_value().bool_value
         self._invert_right = self.get_parameter('invert_right').get_parameter_value().bool_value
+        self._set_velocity_mode = self.get_parameter(
+            'set_velocity_mode_on_start'
+        ).get_parameter_value().bool_value
+
+    def _format_sdk_error(self, comm, err):
+        parts = []
+        if comm != COMM_SUCCESS:
+            try:
+                parts.append(self._packet_handler.getTxRxResult(comm))
+            except Exception:
+                parts.append(f'comm={comm}')
+        if err != 0:
+            try:
+                parts.append(self._packet_handler.getRxPacketError(err))
+            except Exception:
+                parts.append(f'err={err}')
+        return ', '.join(parts) if parts else 'ok'
+
+    def _write1_checked(self, motor_id, address, value, action):
+        comm, err = self._packet_handler.write1ByteTxRx(
+            self._port_handler, motor_id, address, value
+        )
+        if comm != COMM_SUCCESS or err != 0:
+            self.get_logger().error(
+                f'id={motor_id} {action} fallo en addr {address}: {self._format_sdk_error(comm, err)}'
+            )
+            return False
+        return True
 
     def _init_dynamixel(self):
         self._port_handler = PortHandler(self._port)
@@ -92,14 +122,29 @@ class DynamixelNode(Node):
 
         self._port_open = True
 
+        configured = 0
         for motor_id in [self._left_wheel_id, self._right_wheel_id]:
-            dxl_comm_result, dxl_error = self._packet_handler.write1ByteTxRx(
-                self._port_handler, motor_id, ADDR_TORQUE_ENABLE, 1
-            )
-            if dxl_comm_result != COMM_SUCCESS or dxl_error != 0:
-                self.get_logger().warn(
-                    f'Failed to enable torque for motor {motor_id}'
+            ok = True
+            if self._set_velocity_mode:
+                ok &= self._write1_checked(
+                    motor_id, ADDR_TORQUE_ENABLE, 0, 'deshabilitar torque antes de velocity mode'
                 )
+                ok &= self._write1_checked(
+                    motor_id, ADDR_OPERATING_MODE, MODE_VELOCITY, 'configurar velocity mode'
+                )
+            ok &= self._write1_checked(motor_id, ADDR_TORQUE_ENABLE, 1, 'habilitar torque')
+            if ok:
+                configured += 1
+
+        if configured == 0:
+            self.get_logger().error(
+                'No se pudo configurar ningun motor. Verifica CM-550 en Manage mode, '
+                'Bypass Port=USB, baudrate e IDs.'
+            )
+            self._port_handler.closePort()
+            self._port_open = False
+        elif configured != 2:
+            self.get_logger().warn(f'Solo se configuraron {configured}/2 motores')
 
     def _cmd_vel_callback(self, msg):
         if not self._port_open or self._packet_handler is None:
