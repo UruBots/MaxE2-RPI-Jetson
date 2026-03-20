@@ -16,6 +16,7 @@ import tty
 
 import rclpy
 from rcl_interfaces.msg import ParameterDescriptor, ParameterType
+from rclpy.exceptions import ParameterUninitializedException
 from rclpy.node import Node
 from sensor_msgs.msg import JointState
 from std_msgs.msg import Header
@@ -51,7 +52,12 @@ class JointTeleopNode(Node):
 
         self._cmd_topic = self.get_parameter('command_topic').get_parameter_value().string_value
         self._states_topic = self.get_parameter('joint_states_topic').get_parameter_value().string_value
-        param_names = list(self.get_parameter('joint_names').get_parameter_value().string_array_value)
+        try:
+            param_names = list(
+                self.get_parameter('joint_names').get_parameter_value().string_array_value
+            )
+        except ParameterUninitializedException:
+            param_names = []
         self._step = self.get_parameter('step_rad').get_parameter_value().double_value
         republish = self.get_parameter('republish_rate_hz').get_parameter_value().double_value
         self._seed_from_feedback = (

@@ -42,16 +42,15 @@ engineer_joint_node:
       - r_knee
       - r_ankle
 
-    # Opcional: invertir sentido o calibrar cero (misma longitud que joint_ids o vacío)
-    joint_invert: []
-    joint_offset_rad: []
+    # No incluyas joint_invert / joint_offset_rad con valor [] (fallo rclpy+Humble).
+    # Por defecto son listas vacías en código; cámbialas en runtime si hace falta (CLI o nodo).
 
 # Teleop por teclado (mismo archivo; joint_names vacío = mismos nombres que publica engineer_joint_node)
 joint_teleop_node:
   ros__parameters:
     command_topic: '/max/joint_command'
     joint_states_topic: '/joint_states'
-    joint_names: []
+    # joint_names: omitido = lista vacía (tomar nombres desde /joint_states)
     step_rad: 0.05
     republish_rate_hz: 0.0
     seed_from_joint_states: true

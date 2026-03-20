@@ -12,6 +12,7 @@ import threading
 
 import rclpy
 from rcl_interfaces.msg import ParameterDescriptor, ParameterType
+from rclpy.exceptions import ParameterUninitializedException
 from rclpy.node import Node
 from sensor_msgs.msg import JointState
 from std_msgs.msg import Header
@@ -38,6 +39,18 @@ DEFAULT_TICKS_PER_REV = 4096
 
 
 class EngineerJointNode(Node):
+    def _get_bool_array(self, name: str):
+        try:
+            return list(self.get_parameter(name).get_parameter_value().bool_array_value)
+        except ParameterUninitializedException:
+            return []
+
+    def _get_double_array(self, name: str):
+        try:
+            return list(self.get_parameter(name).get_parameter_value().double_array_value)
+        except ParameterUninitializedException:
+            return []
+
     def __init__(self):
         super().__init__('engineer_joint_node')
         self.declare_parameter('port', '/dev/ttyACM0')
@@ -57,16 +70,19 @@ class EngineerJointNode(Node):
             ],
             ParameterDescriptor(type=ParameterType.PARAMETER_STRING_ARRAY),
         )
-        # [] sin tipo explícito puede quedar "sin inicializar" al mezclar con YAML (rclpy Humble)
+        # YAML con joint_invert: [] / joint_offset_rad: [] a veces deja el override sin tipo válido
+        # y declare falla al fusionar → ParameterUninitializedException. ignore_override evita eso.
         self.declare_parameter(
             'joint_invert',
             [],
             ParameterDescriptor(type=ParameterType.PARAMETER_BOOL_ARRAY),
+            ignore_override=True,
         )
         self.declare_parameter(
             'joint_offset_rad',
             [],
             ParameterDescriptor(type=ParameterType.PARAMETER_DOUBLE_ARRAY),
+            ignore_override=True,
         )
         self.declare_parameter('positions_in_radians', True)
         self.declare_parameter('ticks_per_revolution', DEFAULT_TICKS_PER_REV)
@@ -88,8 +104,8 @@ class EngineerJointNode(Node):
         self._joint_names = list(
             self.get_parameter('joint_names').get_parameter_value().string_array_value
         )
-        inv = list(self.get_parameter('joint_invert').get_parameter_value().bool_array_value)
-        off = list(self.get_parameter('joint_offset_rad').get_parameter_value().double_array_value)
+        inv = self._get_bool_array('joint_invert')
+        off = self._get_double_array('joint_offset_rad')
         self._joint_invert = self._pad_bool_list(inv, len(self._joint_ids), False)
         self._joint_offset_rad = self._pad_float_list(off, len(self._joint_ids), 0.0)
         self._positions_in_radians = (
