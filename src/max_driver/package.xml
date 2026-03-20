@@ -12,4 +12,7 @@
   <depend>std_msgs</depend>
   <depend>geometry_msgs</depend>
   <exec_depend>max_interfaces</exec_depend>
+  <export>
+  <build_type>ament_python</build_type>
+</export>
 </package>

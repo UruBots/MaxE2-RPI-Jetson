@@ -4,6 +4,7 @@
   <name>max_interfaces</name>
   <version>0.1.0</version>
   <description>Custom message and service definitions for MAX robot</description>
+  <maintainer email="sebastian@todo.com">sebastian</maintainer>
   <license>Apache-2.0</license>
   <buildtool_depend>ament_cmake</buildtool_depend>
   <buildtool_depend>rosidl_default_generators</buildtool_depend>
