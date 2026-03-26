@@ -39,7 +39,7 @@ shape_detector_node:
     circularity_threshold: 0.7
     square_aspect_threshold: 0.25
     approx_epsilon_ratio: 0.03
-    target_shape: ''  # '', 'ball', 'cube', 'rectangle', 'triangle'
+    target_shape: ''
 
 line_detector_node:
   ros__parameters:
@@ -51,7 +51,7 @@ line_detector_node:
     publish_debug_image: true
     use_camera_topic: false
     roi_height_ratio: 0.35
-    threshold_mode: 'adaptive'  # 'adaptive' or 'binary'
+    threshold_mode: 'adaptive'
     binary_threshold: 60
     adaptive_block_size: 25
     adaptive_c: 8
@@ -78,7 +78,7 @@ tracker_node:
     timeout: 0.5
     search_enabled: false
     search_angular_speed: 0.3
-    output_mode: 'twist'
+    output_mode: 'motion'
     motion_topic: '/max/motion_cmd'
     forward_command: 'walk'
     left_command: 'turn_left'
@@ -95,8 +95,8 @@ line_tracker_node:
     control_rate: 30.0
     timeout: 0.5
     lost_angular_speed: 0.4
-    lost_behavior: 'stop'  # 'stop' or 'rotate'
-    output_mode: 'twist'
+    lost_behavior: 'stop'
+    output_mode: 'motion'
     motion_topic: '/max/motion_cmd'
     forward_command: 'walk'
     left_command: 'turn_left'
@@ -127,7 +127,7 @@ action_executor_node:
     default_action: 'stop'
     action_timeout: 2.0
     control_rate: 30.0
-    output_mode: 'twist'
+    output_mode: 'motion'
     motion_topic: '/max/motion_cmd'
     follow_linear_speed: 0.15
     follow_angular_gain: 1.0
@@ -140,12 +140,6 @@ action_executor_node:
     dance_speed: 0.6
     dance_period: 0.5
 
-teleop_twist_keyboard:
-  ros__parameters:
-    # Velocidades iniciales (se pueden subir/bajar con q/z, w/x, e/c en el nodo)
-    speed: 0.2   # m/s aprox. (linear.x)
-    turn: 0.8    # rad/s (angular.z)
-
 debug_view_node:
   ros__parameters:
     output_topic: '/max/debug_view'
@@ -156,15 +150,20 @@ debug_view_node:
     panel_opacity: 0.7
     detection_timeout: 1.0
 
-dynamixel_node:
+cm550_motion_bridge_node:
   ros__parameters:
     port: '/dev/ttyACM0'
-    baudrate: 1000000
+    baudrate: 57600
     protocol_version: 2.0
-    left_wheel_id: 1
-    right_wheel_id: 2
-    wheel_separation: 0.16
-    max_velocity: 200
-    state_publish_rate: 10.0
-    invert_left: false
-    invert_right: true
+    controller_id: 200
+    motion_speed: 100
+    command_topic: '/max/motion_cmd'
+    page_topic: '/max/motion_page_cmd'
+    status_topic: '/max/motion_status'
+    last_page_topic: '/max/motion_last_page'
+    command_map: 'walk:103,follow:103,stop:1,idle:1,turn_left:50,spin_left:50,turn_right:51,spin_right:51,reverse:158,stand:1,sprint:153,dance:9'
+    command_sequences: 'walk:101|103,follow:101|103,reverse:156|158,sprint:151|153'
+    sequence_step_delay_sec: 0.8
+    ignore_unknown_commands: true
+    strip_action_metadata: true
+    resend_same_command: false

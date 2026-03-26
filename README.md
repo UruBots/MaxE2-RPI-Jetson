@@ -726,6 +726,10 @@ cv2.destroyAllWindows()
 - [NVIDIA Developer Forums - Jetson Nano](https://forums.developer.nvidia.com/c/agx-autonomous-machines/jetson-embedded-systems/jetson-nano/76)
 - [jetsonDynamixel - Control directo por UART](https://github.com/Maik93/jetsonDynamixel)
 
+### Guías locales
+
+- [`docs/INTEGRATION_MAX_E2.md`](/Users/sebastian/Desarrollo/max/docs/INTEGRATION_MAX_E2.md) - orden recomendado de carga y pruebas para `MAX-E2 + CM-550 + ROS 2`
+
 ### Libros
 
 - [Projects Guide to ROBOTIS ENGINEER Vol. 2 (CM-550 + RPi4B + Jetson Nano)](https://www.amazon.com/Projects-Guide-ROBOTIS-ENGINEER-Combined-ebook/dp/B09KQCH2FV) - cubre explícitamente Hexápodo con Jetson Nano y pan-tilt camera
@@ -822,10 +826,12 @@ Mensajes y servicios custom:
   - Publica: `/cmd_vel` (geometry_msgs/Twist)
   - Control proporcional: error normalizado → angular.z, área → linear.x
   - Modo búsqueda opcional (rotar cuando no hay target)
+  - Soporta `output_mode: 'motion'` para publicar acciones a `/max/motion_cmd`
 
 - **`line_tracker_node`** - Convierte detecciones de línea en comandos de velocidad
   - Suscribe: `/max/line_detection`
   - Publica: `/cmd_vel`
+  - Soporta `output_mode: 'motion'` para publicar acciones a `/max/motion_cmd`
 
 - **`joint_teleop_node`** - Teleop por teclado que publica `sensor_msgs/JointState` en `/max/joint_command` (humanoide Engineer)
   - Úsalo junto a `engineer_joint_node`; parámetros en `engineer_max_e2.yaml` (`joint_teleop_node`)
@@ -836,6 +842,14 @@ Mensajes y servicios custom:
   - Acciones predefinidas: `follow`, `stop`, `sprint`, `reverse`, `spin_left`, `spin_right`, `dance`
   - Mapeo configurable vía YAML: `tag_action_map: '0:follow,1:stop,2:spin_left,...'`
   - Selecciona el tag más grande (cercano) cuando hay múltiples
+  - Soporta `output_mode: 'motion'` para publicar directamente a `/max/motion_cmd`
+
+- **`apriltag_head_search_node`** - Barrido de cabeza + recentrado de cuerpo con AprilTag
+  - Suscribe: `/max/apriltag_detections`
+  - Publica: `/max/head_cmd_raw`, `/max/head_preset`, `/max/motion_cmd`, `/max/head_search_status`
+  - Modo búsqueda: barre la cabeza de izquierda a derecha hasta encontrar un tag
+  - Modo centrado: recentra la cabeza y manda `turn_left` / `turn_right` / `stop` al cuerpo
+  - Parámetros en `config/apriltag_head_search.yaml`
 
 ### max_driver
 
@@ -856,6 +870,20 @@ Mensajes y servicios custom:
   - **No** ejecutes a la vez `dynamixel_node` y `engineer_joint_node` sobre el mismo CM-550 (conflicto de bus / comandos).
   - Debes alinear **`joint_ids`** y **`joint_names`** con tu ensamblaje (Dynamixel Wizard 2.0); la plantilla está en `config/engineer_max_e2.yaml`.
 
+- **`cm550_motion_bridge_node`** - Ejecuta páginas de motion cargadas en la `CM-550`
+  - Suscribe: `/max/motion_cmd` (`std_msgs/String`) y `/max/motion_page_cmd` (`std_msgs/UInt16`)
+  - Publica: `/max/motion_status`, `/max/motion_last_page`
+  - Escribe el registro `Motion Index Number (66)` del controlador
+  - Soporta `command_map` y `command_sequences` para acciones como `walk`, `turn_left`, `stop`
+  - Pensado para reutilizar las motions `.mtn3` oficiales del `MAX-E2`
+
+- **`head_ollo_bridge_node`** - Puente ROS 2 para la cabeza OLLO/servo auxiliar
+  - Suscribe: `/max/head_cmd_raw` (`std_msgs/UInt16`), `/max/head_cmd` (`std_msgs/Float32`), `/max/head_preset` (`std_msgs/String`)
+  - Publica: `/max/head_cmd_sent`
+  - Escribe `Remocon Data(59)` en la `CM-550`
+  - Requiere que la `CM-550` esté ejecutando un script que lea `Received Remocon Data(61)` y mueva `OLLO(1, const.OLLO_JOINT_POSITION)`
+  - Ejemplo mínimo en `docs/cm550_head_ollo_receiver_example.py`
+
 ### max_bringup
 
 **Launch files:**
@@ -864,9 +892,15 @@ Mensajes y servicios custom:
 - **`shape_track_launch.py`** - Tracking por formas (shape_detector + tracker + dynamixel + debug_view)
 - **`line_follow_launch.py`** - Seguimiento de línea (line_detector + line_tracker + dynamixel + debug_view)
 - **`apriltag_action_launch.py`** - Acciones por AprilTag (apriltag_detector + action_executor + dynamixel + debug_view)
+- **`shape_track_motion_launch.py`** - Tracking por formas usando motions del `MAX-E2` vía `CM-550`
+- **`line_follow_motion_launch.py`** - Seguimiento de línea usando motions del `MAX-E2` vía `CM-550`
+- **`apriltag_action_motion_launch.py`** - Acciones por AprilTag usando motions del `MAX-E2` vía `CM-550`
 - **`teleop_launch.py`** - Teleoperación por teclado (`teleop_twist_keyboard` + `dynamixel_node`)
 - **`engineer_joint_launch.py`** - Solo control articulaciones Engineer / MAX-E2 (`engineer_joint_node`)
 - **`engineer_joints_teleop_launch.py`** - `engineer_joint_node` + `joint_teleop_node` (mismo `engineer_max_e2.yaml`)
+- **`cm550_motion_bridge_launch.py`** - Puente ROS 2 → motions `.mtn3` ya cargadas en la `CM-550`
+- **`head_ollo_bridge_launch.py`** - Puente ROS 2 → cabeza OLLO/servo auxiliar en `Port 1`
+- **`apriltag_head_search_launch.py`** - Detector de AprilTag + barrido de cabeza + recentrado de cuerpo
 - **`vision_only_launch.py`** - Solo visión y control (sin hardware, para testing)
 
 **Configuración:**
@@ -874,6 +908,10 @@ Mensajes y servicios custom:
 - **`config/max_params.yaml`** - Parámetros para RPi 4B
 - **`config/max_params_jetson.yaml`** - Parámetros para Jetson Nano (incluye GStreamer pipeline)
 - **`config/engineer_max_e2.yaml`** - Plantilla `joint_ids` / `joint_names` para humanoide Engineer (ajustar a tu robot)
+- **`config/max_params_motion.yaml`** - Parámetros para visión/control publicando acciones a `/max/motion_cmd`
+- **`config/cm550_motion_bridge_max_e2.yaml`** - Mapeo de acciones ROS 2 a páginas de motion del `MAX-E2`
+- **`config/head_ollo_bridge.yaml`** - Rango y presets para la cabeza OLLO/servo auxiliar
+- **`config/apriltag_head_search.yaml`** - Parámetros del barrido de cabeza y recentrado con AprilTag
 
 #### Teleoperación (teclado)
 
@@ -935,8 +973,17 @@ ros2 launch max_bringup line_follow_launch.py
 # Lanzar tracking por formas
 ros2 launch max_bringup shape_track_launch.py
 
+# Lanzar tracking por formas usando motions de la CM-550
+ros2 launch max_bringup shape_track_motion_launch.py
+
 # Lanzar acciones por AprilTag
 ros2 launch max_bringup apriltag_action_launch.py
+
+# Lanzar acciones por AprilTag usando motions de la CM-550
+ros2 launch max_bringup apriltag_action_motion_launch.py
+
+# Lanzar seguimiento de linea usando motions de la CM-550
+ros2 launch max_bringup line_follow_motion_launch.py
 
 # Lanzar con config Jetson Nano
 ros2 launch max_bringup apriltag_action_launch.py \
@@ -952,16 +999,30 @@ ros2 launch max_bringup teleop_launch.py
 # Humanoide Engineer / MAX-E2 (articulaciones → /max/joint_command)
 ros2 launch max_bringup engineer_joint_launch.py
 
+# Motions del MAX-E2 ya cargadas en la CM-550
+ros2 launch max_bringup cm550_motion_bridge_launch.py
+
+# Cabeza OLLO / servo auxiliar
+ros2 launch max_bringup head_ollo_bridge_launch.py
+
+# Barrido de cabeza + recentrado con AprilTag
+ros2 launch max_bringup apriltag_head_search_launch.py
+
 # Nodos individuales
 ros2 run max_vision detector_node
 ros2 run max_vision apriltag_detector_node
 ros2 run max_vision hsv_calibrator
 ros2 run max_control tracker_node
 ros2 run max_control action_executor_node
+ros2 run max_control apriltag_head_search_node
 ros2 run max_control joint_teleop_node
 ros2 run max_driver dynamixel_node --ros-args -p port:=/dev/ttyACM0
 ros2 run max_driver engineer_joint_node --ros-args \
   --params-file $(ros2 pkg prefix max_bringup)/share/max_bringup/config/engineer_max_e2.yaml
+ros2 run max_driver cm550_motion_bridge_node --ros-args \
+  --params-file $(ros2 pkg prefix max_bringup)/share/max_bringup/config/cm550_motion_bridge_max_e2.yaml
+ros2 run max_driver head_ollo_bridge_node --ros-args \
+  --params-file $(ros2 pkg prefix max_bringup)/share/max_bringup/config/head_ollo_bridge.yaml
 ros2 run teleop_twist_keyboard teleop_twist_keyboard
 
 # Visualizar debug view

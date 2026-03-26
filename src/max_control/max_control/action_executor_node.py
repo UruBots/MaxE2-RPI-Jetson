@@ -26,6 +26,8 @@ class ActionExecutorNode(Node):
         self.declare_parameter('default_action', 'stop')
         self.declare_parameter('action_timeout', 2.0)
         self.declare_parameter('control_rate', 30.0)
+        self.declare_parameter('output_mode', 'twist')
+        self.declare_parameter('motion_topic', '/max/motion_cmd')
 
         self.declare_parameter('follow_linear_speed', 0.15)
         self.declare_parameter('follow_angular_gain', 1.0)
@@ -48,6 +50,7 @@ class ActionExecutorNode(Node):
         self._last_tags_time = None
         self._current_action = 'idle'
         self._current_tag_id = -1
+        self._output_mode = self.get_parameter('output_mode').get_parameter_value().string_value
 
         self._action_start_time = time.monotonic()
 
@@ -57,6 +60,9 @@ class ActionExecutorNode(Node):
 
         self._cmd_pub = self.create_publisher(Twist, '/cmd_vel', 10)
         self._action_pub = self.create_publisher(String, '/max/current_action', 10)
+        self._motion_pub = self.create_publisher(
+            String, self.get_parameter('motion_topic').get_parameter_value().string_value, 10
+        )
 
         rate = self.get_parameter('control_rate').get_parameter_value().double_value
         self.create_timer(1.0 / rate, self._control_loop)
@@ -107,7 +113,10 @@ class ActionExecutorNode(Node):
         if not self._tags_recent():
             self._current_action = 'idle'
             self._current_tag_id = -1
-            self._cmd_pub.publish(twist)
+            if self._output_mode == 'motion':
+                self._motion_pub.publish(String(data='idle'))
+            else:
+                self._cmd_pub.publish(twist)
             self._publish_action()
             return
 
@@ -115,7 +124,10 @@ class ActionExecutorNode(Node):
         if tag is None:
             self._current_action = 'idle'
             self._current_tag_id = -1
-            self._cmd_pub.publish(twist)
+            if self._output_mode == 'motion':
+                self._motion_pub.publish(String(data='idle'))
+            else:
+                self._cmd_pub.publish(twist)
             self._publish_action()
             return
 
@@ -144,7 +156,10 @@ class ActionExecutorNode(Node):
         else:
             pass
 
-        self._cmd_pub.publish(twist)
+        if self._output_mode == 'motion':
+            self._motion_pub.publish(String(data=action))
+        else:
+            self._cmd_pub.publish(twist)
         self._publish_action()
 
     def _publish_action(self):

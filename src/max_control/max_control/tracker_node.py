@@ -1,6 +1,7 @@
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
+from std_msgs.msg import String
 from max_interfaces.msg import Detection
 
 
@@ -19,9 +20,19 @@ class TrackerNode(Node):
         self.declare_parameter('timeout', 0.5)
         self.declare_parameter('search_enabled', False)
         self.declare_parameter('search_angular_speed', 0.3)
+        self.declare_parameter('output_mode', 'twist')
+        self.declare_parameter('motion_topic', '/max/motion_cmd')
+        self.declare_parameter('forward_command', 'walk')
+        self.declare_parameter('left_command', 'turn_left')
+        self.declare_parameter('right_command', 'turn_right')
+        self.declare_parameter('stop_command', 'stop')
+        self.declare_parameter('search_command', 'turn_left')
 
         self.last_detection = None
         self.last_detection_time = None
+        self.last_motion_command = None
+        self.output_mode = self.get_parameter('output_mode').get_parameter_value().string_value
+        self.motion_topic = self.get_parameter('motion_topic').get_parameter_value().string_value
 
         self.detection_sub = self.create_subscription(
             Detection,
@@ -30,6 +41,7 @@ class TrackerNode(Node):
             10,
         )
         self.cmd_vel_pub = self.create_publisher(Twist, '/cmd_vel', 10)
+        self.motion_pub = self.create_publisher(String, self.motion_topic, 10)
 
         control_rate = self.get_parameter('control_rate').get_parameter_value().double_value
         self.control_timer = self.create_timer(1.0 / control_rate, self._control_callback)
@@ -37,6 +49,21 @@ class TrackerNode(Node):
     def _detection_callback(self, msg: Detection):
         self.last_detection = msg
         self.last_detection_time = self.get_clock().now()
+
+    def _publish_motion(self, command):
+        if command == self.last_motion_command:
+            return
+        msg = String()
+        msg.data = command
+        self.motion_pub.publish(msg)
+        self.last_motion_command = command
+
+    def _publish_stop(self):
+        stop_command = self.get_parameter('stop_command').get_parameter_value().string_value
+        if self.output_mode == 'motion':
+            self._publish_motion(stop_command)
+        else:
+            self.cmd_vel_pub.publish(Twist())
 
     def _control_callback(self):
         twist = Twist()
@@ -60,13 +87,29 @@ class TrackerNode(Node):
         if not is_recent or self.last_detection is None:
             if search_enabled:
                 twist.angular.z = search_angular_speed
-            self.cmd_vel_pub.publish(twist)
+            if self.output_mode == 'motion':
+                search_command = self.get_parameter(
+                    'search_command'
+                ).get_parameter_value().string_value
+                self._publish_motion(search_command if search_enabled else self.get_parameter(
+                    'stop_command'
+                ).get_parameter_value().string_value)
+            else:
+                self.cmd_vel_pub.publish(twist)
             return
 
         if not self.last_detection.detected:
             if search_enabled:
                 twist.angular.z = search_angular_speed
-            self.cmd_vel_pub.publish(twist)
+            if self.output_mode == 'motion':
+                search_command = self.get_parameter(
+                    'search_command'
+                ).get_parameter_value().string_value
+                self._publish_motion(search_command if search_enabled else self.get_parameter(
+                    'stop_command'
+                ).get_parameter_value().string_value)
+            else:
+                self.cmd_vel_pub.publish(twist)
             return
 
         detection = self.last_detection
@@ -94,7 +137,18 @@ class TrackerNode(Node):
         else:
             twist.linear.x = 0.0
 
-        self.cmd_vel_pub.publish(twist)
+        if self.output_mode == 'motion':
+            if abs(error_x) < dead_zone and detection.area > min_area and detection.area <= max_area:
+                command = self.get_parameter('forward_command').get_parameter_value().string_value
+            elif error_x < -dead_zone:
+                command = self.get_parameter('left_command').get_parameter_value().string_value
+            elif error_x > dead_zone:
+                command = self.get_parameter('right_command').get_parameter_value().string_value
+            else:
+                command = self.get_parameter('stop_command').get_parameter_value().string_value
+            self._publish_motion(command)
+        else:
+            self.cmd_vel_pub.publish(twist)
 
 
 def main(args=None):
