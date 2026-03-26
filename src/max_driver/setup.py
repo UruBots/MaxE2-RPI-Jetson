@@ -22,6 +22,7 @@ setup(
             'engineer_joint_node = max_driver.engineer_joint_node:main',
             'cm550_motion_bridge_node = max_driver.cm550_motion_bridge_node:main',
             'head_ollo_bridge_node = max_driver.head_ollo_bridge_node:main',
+            'led_ollo_bridge_node = max_driver.led_ollo_bridge_node:main',
         ],
     },
 )

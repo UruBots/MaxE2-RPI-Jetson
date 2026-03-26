@@ -1,0 +1,11 @@
+led_ollo_bridge_node:
+  ros__parameters:
+    port: '/dev/ttyACM0'
+    baudrate: 57600
+    protocol_version: 2.0
+    controller_id: 200
+    preset_topic: '/max/led_preset'
+    raw_topic: '/max/led_cmd_raw'
+    status_topic: '/max/led_cmd_sent'
+    preset_map: 'off:20000,red:20001,blue:20002,magenta:20003'
+    resend_same_value: false

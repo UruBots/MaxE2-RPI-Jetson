@@ -332,6 +332,27 @@ OLLO(1, const.OLLO_JOINT_POSITION).write(valor)
 Dejamos un ejemplo minimo en:
 `docs/cm550_head_ollo_receiver_example.py`
 
+### LEDs desde ROS 2
+
+El `MAX-E2` oficial usa un LED bicolor en `OLLO(2)` y también permite usar
+los LEDs de los `DYNAMIXEL` desde el Python oficial.
+
+Para el LED OLLO dejamos un bridge ROS 2:
+
+```bash
+ros2 launch max_bringup led_ollo_bridge_launch.py
+ros2 topic pub --once /max/led_preset std_msgs/msg/String "{data: red}"
+ros2 topic pub --once /max/led_preset std_msgs/msg/String "{data: blue}"
+ros2 topic pub --once /max/led_preset std_msgs/msg/String "{data: magenta}"
+ros2 topic pub --once /max/led_preset std_msgs/msg/String "{data: off}"
+```
+
+Config:
+- `src/max_bringup/config/led_ollo_bridge.yaml`
+
+El receptor de ejemplo para la `CM-550` ya soporta cabeza + LEDs en:
+- `docs/cm550_head_ollo_receiver_example.py`
+
 ### Barrido de cabeza con AprilTag
 
 Hay un flujo listo para:
