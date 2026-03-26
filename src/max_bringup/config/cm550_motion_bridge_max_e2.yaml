@@ -1,0 +1,28 @@
+cm550_motion_bridge_node:
+  ros__parameters:
+    port: '/dev/ttyACM0'
+    baudrate: 57600
+    protocol_version: 2.0
+    controller_id: 200
+    motion_speed: 100
+
+    # Publica std_msgs/String con acciones semanticas.
+    # Puedes remapear este topic a /max/current_action para usarlo con action_executor_node.
+    command_topic: '/max/motion_cmd'
+
+    # Alternativa directa: publica std_msgs/UInt16 con la pagina de motion a ejecutar.
+    page_topic: '/max/motion_page_cmd'
+    status_topic: '/max/motion_status'
+    last_page_topic: '/max/motion_last_page'
+
+    # Mapa real sugerido a partir de 01_ENG2_Max_E2_MO.mtn3.
+    command_map: 'walk:103,follow:103,stop:1,idle:1,turn_left:50,spin_left:50,turn_right:51,spin_right:51,reverse:158,stand:1,stand_up:3,sitdown:60,hello:5,clap:9'
+
+    # Secuencias opcionales para motions que necesitan start -> go.
+    # Ajusta los tiempos segun como responda tu robot real.
+    command_sequences: 'walk:101|103,follow:101|103,reverse:156|158'
+    sequence_step_delay_sec: 0.8
+
+    ignore_unknown_commands: true
+    strip_action_metadata: true
+    resend_same_command: false

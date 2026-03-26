@@ -1,0 +1,68 @@
+apriltag_detector_node:
+  ros__parameters:
+    camera_index: 0
+    frame_width: 640
+    frame_height: 480
+    fps: 30.0
+    gstreamer_pipeline: ''
+    use_camera_topic: false
+    publish_debug_image: true
+    tag_family: 'tag36h11'
+    nthreads: 2
+    quad_decimate: 2.0
+    quad_sigma: 0.0
+    decode_sharpening: 0.25
+    refine_edges: true
+
+cm550_motion_bridge_node:
+  ros__parameters:
+    port: '/dev/ttyACM0'
+    baudrate: 57600
+    protocol_version: 2.0
+    controller_id: 200
+    motion_speed: 100
+    command_topic: '/max/motion_cmd'
+    page_topic: '/max/motion_page_cmd'
+    status_topic: '/max/motion_status'
+    last_page_topic: '/max/motion_last_page'
+    command_map: 'stop:1,idle:1,turn_left:50,spin_left:50,turn_right:51,spin_right:51,stand:1'
+    command_sequences: ''
+    sequence_step_delay_sec: 0.8
+    ignore_unknown_commands: true
+    strip_action_metadata: true
+    resend_same_command: false
+
+head_ollo_bridge_node:
+  ros__parameters:
+    port: '/dev/ttyACM0'
+    baudrate: 57600
+    protocol_version: 2.0
+    controller_id: 200
+    raw_topic: '/max/head_cmd_raw'
+    angle_topic: '/max/head_cmd'
+    preset_topic: '/max/head_preset'
+    status_topic: '/max/head_cmd_sent'
+    center_raw: 512
+    min_raw: 344
+    max_raw: 680
+    radians_per_range: 1.5708
+    preset_map: 'center:512,left:680,right:344'
+    resend_same_value: false
+
+apriltag_head_search_node:
+  ros__parameters:
+    detections_topic: '/max/apriltag_detections'
+    head_raw_topic: '/max/head_cmd_raw'
+    head_preset_topic: '/max/head_preset'
+    motion_topic: '/max/motion_cmd'
+    status_topic: '/max/head_search_status'
+    target_tag_id: -1
+    detection_timeout: 0.5
+    control_rate: 8.0
+    body_dead_zone: 0.12
+    center_head_on_detect: true
+    scan_min_raw: 344
+    scan_max_raw: 680
+    scan_step_raw: 18
+    scan_start_raw: 512
+    scan_pause_sec: 0.15

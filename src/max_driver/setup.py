@@ -20,6 +20,8 @@ setup(
         'console_scripts': [
             'dynamixel_node = max_driver.dynamixel_node:main',
             'engineer_joint_node = max_driver.engineer_joint_node:main',
+            'cm550_motion_bridge_node = max_driver.cm550_motion_bridge_node:main',
+            'head_ollo_bridge_node = max_driver.head_ollo_bridge_node:main',
         ],
     },
 )

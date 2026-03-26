@@ -267,6 +267,96 @@ Registros relevantes:
 
 **Ventajas:** permite usar motions pregrabadas del ROBOTIS ENGINEER Kit.
 
+### Arquitectura D: ROS 2 → CM-550 (motion pages)
+
+`ROS 2` publica comandos de alto nivel y un nodo puente escribe el registro
+`Motion Index Number (66)` de la `CM-550`. Esto permite reutilizar las motions
+oficiales del `MAX-E2` sin implementar todavía un generador de marcha completo.
+
+```
+ROS 2 (/max/motion_cmd o /max/motion_page_cmd)
+    │
+    ▼
+cm550_motion_bridge_node
+    │ USB (Protocol 2.0, ID=200)
+    ▼
+CM-550
+    │
+    ▼
+Motion .mtn3 cargada en el controlador
+```
+
+Uso rápido:
+
+```bash
+ros2 launch max_bringup cm550_motion_bridge_launch.py
+ros2 topic pub --once /max/motion_cmd std_msgs/msg/String "{data: walk}"
+ros2 topic pub --once /max/motion_page_cmd std_msgs/msg/UInt16 "{data: 3}"
+```
+
+Notas:
+- Ajusta `command_map` en `src/max_bringup/config/cm550_motion_bridge_max_e2.yaml`
+  para que coincida con las páginas reales cargadas en tu `CM-550`.
+- Si una motion necesita varias páginas, usa `command_sequences`, por ejemplo
+  `walk:101|103` para `start -> go`.
+- Este flujo asume que la `CM-550` ya tiene descargadas las motions `.mtn3` del robot.
+- Si quieres integrarlo con `action_executor_node`, remapea `command_topic` a
+  `/max/current_action` y usa nombres compatibles en `command_map`.
+- Puedes extraer una primera versión del `command_map` desde un `.mtn3` con:
+
+```bash
+python3 scripts/extract_cm550_motion_map.py /ruta/a/01_ENG2_Max_E2_MO.mtn3
+```
+
+### Cabeza OLLO / Pololu
+
+En el `MAX-E2` oficial, la cabeza no aparece controlada como un `XL430` adicional
+sino como un `OLLO Joint` conectado al `Port 1` de la `CM-550`.
+
+Uso rápido desde ROS 2:
+
+```bash
+ros2 launch max_bringup head_ollo_bridge_launch.py
+ros2 topic pub --once /max/head_preset std_msgs/msg/String "{data: center}"
+ros2 topic pub --once /max/head_cmd_raw std_msgs/msg/UInt16 "{data: 680}"
+ros2 topic pub --once /max/head_cmd std_msgs/msg/Float32 "{data: 0.4}"
+```
+
+Este bridge escribe `Remocon Data(59)` en la `CM-550`. Para mover la cabeza,
+la `CM-550` debe ejecutar un script que lea `Received Remocon Data(61)` y haga:
+
+```python
+OLLO(1, const.OLLO_JOINT_POSITION).write(valor)
+```
+
+Dejamos un ejemplo minimo en:
+`docs/cm550_head_ollo_receiver_example.py`
+
+### Barrido de cabeza con AprilTag
+
+Hay un flujo listo para:
+- barrer la cabeza de izquierda a derecha
+- detener el barrido cuando aparezca un AprilTag
+- mandar `turn_left` / `turn_right` al cuerpo
+- recentrar la cabeza con el preset `center`
+
+Uso:
+
+```bash
+ros2 launch max_bringup apriltag_head_search_launch.py
+```
+
+Nodo principal:
+- `apriltag_head_search_node`
+
+Topics usados:
+- entrada: `/max/apriltag_detections`
+- salida cabeza: `/max/head_cmd_raw`, `/max/head_preset`
+- salida cuerpo: `/max/motion_cmd`
+
+Archivo de parámetros:
+- `src/max_bringup/config/apriltag_head_search.yaml`
+
 ### Comparación
 
 | Criterio | A (CM-550 bypass) | B (U2D2) | C (Remocon) |

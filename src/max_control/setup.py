@@ -22,6 +22,7 @@ setup(
             'line_tracker_node = max_control.line_tracker_node:main',
             'action_executor_node = max_control.action_executor_node:main',
             'joint_teleop_node = max_control.joint_teleop_node:main',
+            'apriltag_head_search_node = max_control.apriltag_head_search_node:main',
         ],
     },
 )

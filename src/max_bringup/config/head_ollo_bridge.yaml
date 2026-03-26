@@ -1,0 +1,18 @@
+head_ollo_bridge_node:
+  ros__parameters:
+    port: '/dev/ttyACM0'
+    baudrate: 57600
+    protocol_version: 2.0
+    controller_id: 200
+
+    raw_topic: '/max/head_cmd_raw'
+    angle_topic: '/max/head_cmd'
+    preset_topic: '/max/head_preset'
+    status_topic: '/max/head_cmd_sent'
+
+    center_raw: 512
+    min_raw: 280
+    max_raw: 760
+    radians_per_range: 1.5708
+    preset_map: 'center:512,left:680,right:344'
+    resend_same_value: false

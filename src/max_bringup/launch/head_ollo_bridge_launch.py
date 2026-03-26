@@ -1,0 +1,28 @@
+"""Bridge ROS 2 head commands to an OLLO joint via CM-550 remocon data."""
+import os
+from ament_index_python.packages import get_package_share_directory
+from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration
+from launch_ros.actions import Node
+
+
+def generate_launch_description():
+    pkg_dir = get_package_share_directory('max_bringup')
+
+    config_file = LaunchConfiguration('config_file')
+    config_file_arg = DeclareLaunchArgument(
+        'config_file',
+        default_value=os.path.join(pkg_dir, 'config', 'head_ollo_bridge.yaml'),
+        description='YAML para head_ollo_bridge_node',
+    )
+
+    node = Node(
+        package='max_driver',
+        executable='head_ollo_bridge_node',
+        name='head_ollo_bridge_node',
+        parameters=[config_file],
+        output='screen',
+    )
+
+    return LaunchDescription([config_file_arg, node])
