@@ -24,6 +24,8 @@ setup(
             'joint_teleop_node = max_control.joint_teleop_node:main',
             'apriltag_head_search_node = max_control.apriltag_head_search_node:main',
             'twist_to_motion_node = max_control.twist_to_motion_node:main',
+            'motion_mux_node = max_control.motion_mux_node:main',
+            'failsafe_node = max_control.failsafe_node:main',
         ],
     },
 )

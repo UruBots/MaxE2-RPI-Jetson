@@ -173,3 +173,19 @@ dynamixel_node:
     state_publish_rate: 10.0
     invert_left: false
     invert_right: true
+
+twist_to_motion_node:
+  ros__parameters:
+    motion_topic: '/max/motion_cmd'
+    forward_command: 'walk'
+    backward_command: 'reverse'
+    left_command: 'turn_left'
+    right_command: 'turn_right'
+    stop_command: 'stop'
+    linear_threshold: 0.05
+    angular_threshold: 0.05
+    prefer_turn_over_forward: true
+    speed_topic: '/max/profile_velocity'
+    profile_velocity_max: 120
+    profile_velocity_min: 0
+    linear_speed_full_scale: 0.4

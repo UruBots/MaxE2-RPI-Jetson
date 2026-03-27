@@ -291,7 +291,7 @@ ros2 launch max_bringup teleop_cm550_launch.py
 
 Nodos:
 - `teleop_twist_keyboard`: publica `/cmd_vel` con las teclas estándar (i/k/j/l, etc.).
-- `twist_to_motion_node`: convierte `/cmd_vel` en comandos discretos (`walk`, `reverse`, `turn_left`, `turn_right`, `stop`) y los publica en `/max/motion_cmd`.
+- `twist_to_motion_node`: convierte `/cmd_vel` en comandos discretos (`walk`, `reverse`, `turn_left`, `turn_right`, `stop`) y los publica en `/max/motion_cmd`, y además escala la velocidad lineal a `/max/profile_velocity`.
 - `cm550_remocon_bridge_node`: traduce esos comandos a paquetes remocon para la CM-550.
 
 Config principal:
@@ -304,6 +304,9 @@ Config principal:
   - `stop_command`: `stop`
   - `linear_threshold`, `angular_threshold`: umbrales de activación.
   - `prefer_turn_over_forward`: si `true`, prioriza giro cuando hay giro y avance a la vez.
+  - `speed_topic`: `/max/profile_velocity` (ya consumido por el bridge).
+  - `profile_velocity_max`, `profile_velocity_min`: rango de Profile Velocity que se enviará.
+  - `linear_speed_full_scale`: velocidad lineal (m/s) que corresponde a `profile_velocity_max`.
 - Sección `teleop_twist_keyboard`:
   - `speed`, `turn`: ganancias de velocidad lineal/angulares del nodo de teclado.
 
@@ -311,9 +314,51 @@ Ajustes en caliente:
 ```bash
 ros2 param set /twist_to_motion_node forward_command run          # usar otra motion
 ros2 param set /twist_to_motion_node prefer_turn_over_forward false
+ros2 param set /twist_to_motion_node profile_velocity_max 150
+ros2 param set /twist_to_motion_node linear_speed_full_scale 0.3
 ros2 param set /teleop_twist_keyboard speed 0.3
 ```
 
 Notas:
 - No mezcles este launch con otros que también publiquen en `/cmd_vel` o `/max/motion_cmd` (tracker, line_tracker, action_executor) para evitar que se pisen.
 - El mapping a motions depende de que esas motions existan en la CM-550 (ver `command_map` en `cm550_motion_bridge_max_e2.yaml`).
+
+### Evitar colisiones de control
+- Usa un único launch que publique en `/max/motion_cmd` a la vez (teleop o trackers). Si necesitas alternar, cierra uno antes de abrir otro.
+- Alternativa: usa el mux incluido:
+  ```bash
+  ros2 launch max_bringup motion_mux_launch.py active_source:=teleop   # o tracker | apriltag | line
+  ```
+  Publica en `/max/motion_cmd` solo lo que venga de `/max/motion_cmd_<source>`.
+- Otra opción: remapear topics de controladores a `/max/motion_cmd_<source>` y dejar que el mux seleccione.
+
+### Motions personalizadas (run/down/etc.)
+- Añade las páginas a `command_map` y `command_sequences` en `cm550_motion_bridge_max_e2.yaml` o `max_params_motion.yaml`. Ejemplo:
+  - `command_map: '...,run:153,down:60'`
+  - `command_sequences: '...,run:151|153'`
+- Ajusta también `twist_to_motion_node` si quieres que el teclado dispare esas motions:
+  ```bash
+  ros2 param set /twist_to_motion_node forward_command run
+  ```
+
+### Preflight rápido (cámara + serial)
+- Chequea hardware antes de lanzar control:
+  ```bash
+  ros2 launch max_bringup preflight_launch.py
+  ```
+- Usa los parámetros del YAML para `camera_index`/`gstreamer_pipeline` y `serial_port`. Si `pyserial` falta, el chequeo de serial se omite con warning.
+
+### Ver debug de visión con image_view
+- Publicaciones actuales:
+  - Línea: `/max/line_debug_image`
+  - Objeto/forma (shape): `/max/shape_debug_image`
+  - Color HSV (detector): `/max/debug_image`
+  - AprilTag: `/max/apriltag_debug_image`
+- Launch para abrir viewers:
+  ```bash
+  ros2 launch max_bringup debug_image_view_launch.py
+  ```
+- O manual:
+  ```bash
+  ros2 run image_view image_view --ros-args -r image:=/max/line_debug_image
+  ```

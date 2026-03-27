@@ -33,6 +33,10 @@ cm550_remocon_bridge_node:
     led_status_topic: '/max/led_cmd_sent'
     led_preset_map: 'off:20000,red:20001,blue:20002,magenta:20003'
     speed_topic: '/max/profile_velocity'
+    # Opcional: motions adicionales (ejemplo)
+    # run:153 ya está en max_params_motion.yaml; si se usa aquí añadir:
+    # command_map: '...,run:153'
+    # command_sequences: '...,run:151|153'
 
 teleop_twist_keyboard:
   ros__parameters:
@@ -51,3 +55,21 @@ twist_to_motion_node:
     linear_threshold: 0.05
     angular_threshold: 0.05
     prefer_turn_over_forward: true
+    speed_topic: '/max/profile_velocity'
+    profile_velocity_max: 120
+    profile_velocity_min: 0
+    linear_speed_full_scale: 0.4  # m/s que equivalen a vel máxima enviada
+
+motion_mux_node:
+  ros__parameters:
+    sources: ['teleop','tracker','apriltag','line']
+    active_source: 'teleop'
+    output_topic: '/max/motion_cmd'
+
+failsafe_node:
+  ros__parameters:
+    motion_topic: '/max/motion_cmd'
+    speed_topic: '/max/profile_velocity'
+    timeout_sec: 2.5
+    stop_command: 'stop'
+    fallback_command: 'stand'

@@ -24,6 +24,7 @@ setup(
             'apriltag_detector_node = max_vision.apriltag_detector_node:main',
             'debug_view_node = max_vision.debug_view_node:main',
             'hsv_calibrator = max_vision.hsv_calibrator:main',
+            'preflight_check_node = max_vision.preflight_check_node:main',
         ],
     },
 )
