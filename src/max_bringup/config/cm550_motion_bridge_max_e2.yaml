@@ -33,6 +33,7 @@ cm550_remocon_bridge_node:
     led_status_topic: '/max/led_cmd_sent'
     led_preset_map: 'off:20000,red:20001,blue:20002,magenta:20003'
     speed_topic: '/max/profile_velocity'
+    profile_velocity_max_limit: 300
     # Opcional: motions adicionales (ejemplo)
     # run:153 ya está en max_params_motion.yaml; si se usa aquí añadir:
     # command_map: '...,run:153'

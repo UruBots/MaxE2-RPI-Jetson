@@ -2,6 +2,7 @@ import rclpy
 from rclpy.node import Node
 from rclpy.parameter import Parameter
 import cv2
+import sys
 
 try:
     import serial
@@ -29,11 +30,14 @@ class PreflightCheckNode(Node):
 
         if ok_camera and ok_serial:
             self.get_logger().info('Preflight OK: camera y serial disponibles')
+            self._ok = True
         else:
             self.get_logger().error('Preflight falló; revisa errores anteriores')
+            self._ok = False
 
         # End process after logging once
         rclpy.shutdown()
+        sys.exit(0 if self._ok else 1)
 
     def _check_camera(self):
         gst = self.get_parameter('gstreamer_pipeline').get_parameter_value().string_value
@@ -79,4 +83,3 @@ def main(args=None):
     rclpy.init(args=args)
     PreflightCheckNode()
     rclpy.spin(rclpy.create_node('dummy_shutdown'))  # never reached
-

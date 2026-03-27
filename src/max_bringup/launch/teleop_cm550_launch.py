@@ -29,7 +29,7 @@ def generate_launch_description():
         package='max_control',
         executable='twist_to_motion_node',
         name='twist_to_motion_node',
-        parameters=[config_file],
+        parameters=[config_file, {'motion_topic': '/max/motion_cmd_teleop'}],
         output='screen',
     )
 

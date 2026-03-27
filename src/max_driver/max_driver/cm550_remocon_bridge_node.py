@@ -98,6 +98,7 @@ class Cm550RemoconBridgeNode(Node):
         self.declare_parameter('led_status_topic', '/max/led_cmd_sent')
         self.declare_parameter('led_preset_map', 'off:20000,red:20001,blue:20002,magenta:20003')
         self.declare_parameter('speed_topic', '/max/profile_velocity')
+        self.declare_parameter('profile_velocity_max_limit', 300)
 
         self._port = self.get_parameter('port').get_parameter_value().string_value
         self._baudrate = self.get_parameter('baudrate').get_parameter_value().integer_value
@@ -164,6 +165,10 @@ class Cm550RemoconBridgeNode(Node):
             'led_preset_map'
         ).get_parameter_value().string_value
         self._speed_topic = self.get_parameter('speed_topic').get_parameter_value().string_value
+        self._profile_velocity_max_limit = max(
+            0,
+            self.get_parameter('profile_velocity_max_limit').get_parameter_value().integer_value,
+        )
 
     def _open_serial(self):
         if serial is None:
@@ -404,7 +409,8 @@ class Cm550RemoconBridgeNode(Node):
         self._send_led_value(msg.data, 'led_raw')
 
     def _on_speed_cmd(self, msg):
-        raw = int(max(0, min(65535 - SPEED_BASE, msg.data)))
+        limit = self._profile_velocity_max_limit if self._profile_velocity_max_limit > 0 else (65535 - SPEED_BASE)
+        raw = int(max(0, min(limit, msg.data)))
         encoded = SPEED_BASE + raw
         self._send_value(encoded, 'speed_cmd')
 
