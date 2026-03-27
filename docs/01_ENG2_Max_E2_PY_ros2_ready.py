@@ -907,6 +907,7 @@ def HandleRosRemocon():
         return False
 
     nValue = int(rc.read())
+    print("ROS Remocon:", nValue)
     IsHandled = False
 
     # Motion pages sent by ROS 2 through cm550_remocon_bridge_node.
@@ -1838,6 +1839,11 @@ nTest_BackgroundImage = 1 # test 시 표시될 페이지 # (English) Page displa
 # 테스트 모드가 아닌 경우만 초기자세 및 세팅등을 실행
 # (English) Init pose and setting is executed only if it's not test mode.
 if (nTest == 0):
+    # Force runtime remocon input over USB so ROS 2 packets from the RPi arrive at rc.read().
+    # 35: Task Print Port = USB, 43: Remote Port = USB
+    etc.write8(35, 2)
+    etc.write8(43, 2)
+    delay(50)
     # controller direction : 0-vertical(Humanoid), 1-Horizontal
     eeprom.imu_type(0)
     #토크를 풀기전에 앉아준다.
