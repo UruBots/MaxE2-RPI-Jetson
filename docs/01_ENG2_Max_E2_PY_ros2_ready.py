@@ -652,15 +652,20 @@ def Motion_Play(nMotionIndex, nNextMotion = 0):
         else :
             motion.play((int)(nMotionIndex), (int)(nNextMotion))
     nMotion_Prev = nMotionIndex
-def Motion_Play_And_Wait(nMotionIndex, nNextMotion = 0):
+def Motion_Play_And_Wait(nMotionIndex, nNextMotion = 0, timeout_ms = 10000):
     Motion_Play(nMotionIndex, nNextMotion)
-    Motion_Wait()
-def Motion_Wait() :
+    Motion_Wait(timeout_ms)
+def Motion_Wait(timeout_ms = 10000) :
+    tmr = CTimer()
+    tmr.Set()
     while motion.status():
+        if tmr.Get() > timeout_ms:
+            break
         if btnList != None:
             # 버튼 눌림 체크 - 터치의 소비
             # (English) Checking the button push            
             nNum0, nNum1, Event_Dn0, Event_Dn1, Event_Up0, Event_Up1, Btn0, Btn1 = GetButton(btnList)
+        delay(5)
 def TorqAll(IsOn, IsSound = None):
     TorqOnOff(-1, IsOn, IsSound)
 def TorqOnOff(nNum, IsOn, IsSound = None):
@@ -773,11 +778,16 @@ def IsButton(nX, nY, Btn):
 
 # 모터전체 위치업데이트
 # (English) Update all DYNAMIXEL position. 
-def PositionUpdate():
+def PositionUpdate(timeout_ms = 1500):
     etc.write8(65,3)
+    tmr = CTimer()
+    tmr.Set()
     while(True) :
         if etc.read8(65) == 0 :
-            break
+            return True
+        if tmr.Get() > timeout_ms:
+            return False
+        delay(5)
 
 #출력숫자 간단 테스트
 # (English) Brief number printing test 
@@ -892,8 +902,14 @@ ROS_LED_MAGENTA = 20003
 ROS_HEAD_BASE = 30000
 ROS_HEAD_MIN = ROS_HEAD_BASE
 ROS_HEAD_MAX = ROS_HEAD_BASE + 1023
+ROS_HEAD_CENTER = 512
 ROS_HEAD_CLAMP_MIN = 280
 ROS_HEAD_CLAMP_MAX = 760
+ROS_CMD_READY = 40000
+ROS_CMD_FIGHT_READY = 40001
+ROS_CMD_TORQUE_ON = 40002
+ROS_CMD_TORQUE_OFF = 40003
+ROS_CMD_STOP = 40004
 
 def Clamp(nValue, nMin, nMax):
     if nValue < nMin:
@@ -901,6 +917,12 @@ def Clamp(nValue, nMin, nMax):
     if nValue > nMax:
         return nMax
     return nValue
+
+def SetHeadRaw(nHead):
+    nHead = Clamp(int(nHead), ROS_HEAD_CLAMP_MIN, ROS_HEAD_CLAMP_MAX)
+    CVar.nPos_Servo = nHead
+    OLLO(1, const.OLLO_JOINT_POSITION).write(nHead)
+    return nHead
 
 def HandleRosRemocon():
     if rc.received() != True:
@@ -911,13 +933,15 @@ def HandleRosRemocon():
 
     # Motion pages sent by ROS 2 through cm550_remocon_bridge_node.
     if (nValue >= ROS_MOTION_BASE) and (nValue <= ROS_MOTION_MAX):
-        Motion_Play(int(nValue - ROS_MOTION_BASE))
+        nMotionPage = int(nValue - ROS_MOTION_BASE)
+        if nMotionPage == 103:
+            Motion_Play(101, 103)
+        else:
+            Motion_Play(nMotionPage)
         IsHandled = True
     # Head raw command sent by cm550_remocon_bridge_node.
     elif (nValue >= ROS_HEAD_MIN) and (nValue <= ROS_HEAD_MAX):
-        nHead = Clamp(int(nValue - ROS_HEAD_BASE), ROS_HEAD_CLAMP_MIN, ROS_HEAD_CLAMP_MAX)
-        CVar.nPos_Servo = nHead
-        OLLO(1, const.OLLO_JOINT_POSITION).write(nHead)
+        SetHeadRaw(int(nValue - ROS_HEAD_BASE))
         IsHandled = True
     # LED presets sent by cm550_remocon_bridge_node.
     elif nValue == ROS_LED_OFF:
@@ -931,6 +955,21 @@ def HandleRosRemocon():
         IsHandled = True
     elif nValue == ROS_LED_MAGENTA:
         LedPwm(100, 100)
+        IsHandled = True
+    elif nValue == ROS_CMD_READY:
+        Motion_Ready(1)
+        IsHandled = True
+    elif nValue == ROS_CMD_FIGHT_READY:
+        Motion_Ready(2)
+        IsHandled = True
+    elif nValue == ROS_CMD_TORQUE_ON:
+        TorqAll(True)
+        IsHandled = True
+    elif nValue == ROS_CMD_TORQUE_OFF:
+        TorqAll(False)
+        IsHandled = True
+    elif nValue == ROS_CMD_STOP:
+        Motion_Stop()
         IsHandled = True
 
     return IsHandled
@@ -1862,7 +1901,7 @@ if (nTest == 0):
     TorqAll(True) 
     # 머리를 가운데로 움직여 둔다.
     # (English) Align the head a center.     
-    OLLO(1, const.OLLO_JOINT_POSITION).write(512)
+    SetHeadRaw(ROS_HEAD_CENTER)
     
     # 모든 DXL의 속도를 초기상태로 되돌림
     # (English) Reset all DYNAMIXEL's velocity    

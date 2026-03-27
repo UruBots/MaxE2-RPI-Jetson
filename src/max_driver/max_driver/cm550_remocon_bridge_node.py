@@ -65,7 +65,8 @@ class Cm550RemoconBridgeNode(Node):
         self.declare_parameter('baudrate', 57600)
         self.declare_parameter('serial_timeout_sec', 0.05)
         self.declare_parameter('write_delay_sec', 0.02)
-        self.declare_parameter('resend_same_motion_command', False)
+        # Permitir reenvío de la misma acción (p.ej. varios "walk" seguidos).
+        self.declare_parameter('resend_same_motion_command', True)
         self.declare_parameter('resend_same_aux_command', False)
 
         self.declare_parameter('command_topic', '/max/motion_cmd')

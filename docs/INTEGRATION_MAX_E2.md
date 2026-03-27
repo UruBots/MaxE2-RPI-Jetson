@@ -49,11 +49,41 @@ Haz las pruebas en este orden:
 5. comprobar barrido de cabeza
 6. comprobar recentrado del cuerpo
 
+## 3.1 Estado real de la CM-550
+
+Antes de culpar a `ROS 2`, confirma que la `CM-550` realmente está ejecutando el script.
+
+Checklist:
+
+1. desconecta `R+ Task 3.0` y `R+ Manager 2.0`
+2. apaga la `CM-550`
+3. aliméntala con batería o fuente normal
+4. enciéndela
+5. presiona `MODE` hasta dejar el LED en verde
+6. presiona `START`
+7. verifica que el verde deje de parpadear
+
+Interpretación práctica:
+
+- `MODE` rojo: `Manage`, el script no está corriendo
+- `MODE` verde parpadeando: `Play`, esperando `START`
+- `MODE` verde fijo o deja de parpadear: el script debería estar ejecutándose
+
+Recién después de eso conecta el USB a la PC/RPi y prueba `ROS 2`.
+
+Importante:
+- si `R+ Task` o `R+ Manager` están conectados, la `CM-550` puede volver a `Manage`
+- si el script no está corriendo, `rc.read()` no va a reaccionar aunque el bridge ROS funcione bien
+
 ## 4. Probar motions del cuerpo
 
 La estrategia recomendada es:
 
 `ROS 2 -> Remocon packet serial -> rc.read() en CM-550 -> motion.play(...)`
+
+El transporte práctico recomendado es:
+
+`PC/RPi -> micro-USB -> paquete tipo RC-100 -> CM-550`
 
 No dependas de escribir `Motion Index Number (66)` directamente sobre el firmware oficial del `MAX-E2`.
 
@@ -77,6 +107,16 @@ Config:
 
 Script listo para la `CM-550`:
 - [`01_ENG2_Max_E2_PY_ros2_ready.py`](/Users/sebastian/Desarrollo/max/docs/01_ENG2_Max_E2_PY_ros2_ready.py)
+
+Orden correcto de prueba:
+
+1. cargar el `.py`
+2. cargar el `.mtn3`
+3. apagar la `CM-550`
+4. encenderla
+5. poner `Play` (`MODE` verde)
+6. presionar `START`
+7. recién ahí conectar USB y lanzar `ROS 2`
 
 ## 5. Probar cabeza OLLO
 

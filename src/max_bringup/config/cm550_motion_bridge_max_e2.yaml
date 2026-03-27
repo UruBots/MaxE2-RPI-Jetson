@@ -4,7 +4,7 @@ cm550_remocon_bridge_node:
     baudrate: 57600
     serial_timeout_sec: 0.05
     write_delay_sec: 0.02
-    resend_same_motion_command: false
+    resend_same_motion_command: true
     resend_same_aux_command: false
 
     command_topic: '/max/motion_cmd'

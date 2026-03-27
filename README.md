@@ -246,45 +246,29 @@ Dynamixel servos (daisy-chain)
 - El U2D2 aparece como `/dev/ttyUSB0` en ambas plataformas
 - **Ventajas:** control directo, probado y documentado. El usuario "newGUy" en el foro de ROBOTIS confirmó que *"U2D2 + Dynamixel SDK solved my whole problem"*.
 
-### Arquitectura C: SBC → CM-550 (remocon packets)
+### Arquitectura C: SBC → CM-550 (Remocon packet real)
 
-El SBC envía comandos de alto nivel (remocon data) al CM-550, que ejecuta un Task code preloaded.
+El SBC envía paquetes remotos tipo `RC-100` por serial USB/UART al `CM-550`, y el
+script Python en la controladora los recibe con `rc.read()`.
 
 ```
-SBC (cámara + OpenCV + pySerial)
-    │ UART o BLE
+SBC (cámara + OpenCV + ROS 2 + pySerial)
+    │ micro-USB o UART
     ▼
-CM-550 (Task code lee remocon data en address 61)
+cm550_remocon_bridge_node
+    │ paquete tipo RC-100
+    ▼
+CM-550 (Play mode + rc.read())
     │ TTL
     ▼
-Dynamixel servos
+Dynamixel servos / OLLO / LEDs
 ```
 
-Registros relevantes:
-- **Address 59** (`Transmitting Remocon Data`): dato remoto a transmitir (0 ~ 65535)
-- **Address 61** (`Received Remocon Data`): dato remoto recibido (0 ~ 65535)
-- **Address 63** (`Remocon Data Arrived`): flag de nuevo dato (0/1)
+Registros relevantes del controlador:
+- **Address 43** (`Remote Port`): `0 BLE`, `1 UART`, `2 USB plain cable`
 
-**Ventajas:** permite usar motions pregrabadas del ROBOTIS ENGINEER Kit.
-
-### Arquitectura D: ROS 2 → CM-550 (motion pages)
-
-`ROS 2` publica comandos de alto nivel y un nodo puente escribe el registro
-`Motion Index Number (66)` de la `CM-550`. Esto permite reutilizar las motions
-oficiales del `MAX-E2` sin implementar todavía un generador de marcha completo.
-
-```
-ROS 2 (/max/motion_cmd o /max/motion_page_cmd)
-    │
-    ▼
-cm550_motion_bridge_node
-    │ USB (Protocol 2.0, ID=200)
-    ▼
-CM-550
-    │
-    ▼
-Motion .mtn3 cargada en el controlador
-```
+**Ventajas:** mantiene activas `TASK`, `MicroPython` y `MOTION`, y permite reutilizar
+las motions pregrabadas del `ROBOTIS ENGINEER Kit`.
 
 Uso rápido:
 
@@ -299,9 +283,8 @@ Notas:
   para que coincida con las páginas reales cargadas en tu `CM-550`.
 - Si una motion necesita varias páginas, usa `command_sequences`, por ejemplo
   `walk:101|103` para `start -> go`.
-- El modo recomendado es `transport_mode: 'remocon'`: `ROS 2` escribe en `Remocon Data(59)`
-  y la `CM-550` ejecuta un script local que lee `Received Remocon Data(61)` y llama a `motion.play(...)`.
-- Este flujo asume que la `CM-550` ya tiene descargadas las motions `.mtn3` del robot.
+- Este flujo asume que la `CM-550` ya tiene descargadas las motions `.mtn3` del robot
+  y que el script en la controladora usa `rc.read()`.
 - Si quieres integrarlo con `action_executor_node`, remapea `command_topic` a
   `/max/current_action` y usa nombres compatibles en `command_map`.
 - Puedes extraer una primera versión del `command_map` desde un `.mtn3` con:
@@ -310,8 +293,14 @@ Notas:
 python3 scripts/extract_cm550_motion_map.py /ruta/a/01_ENG2_Max_E2_MO.mtn3
 ```
 
-Ejemplo de receptor en la `CM-550`:
-- `docs/cm550_motion_remocon_receiver_example.py`
+Script listo para la `CM-550`:
+- `docs/01_ENG2_Max_E2_PY_ros2_ready.py`
+
+Checklist de runtime:
+- `MODE` rojo: `Manage`, el script no corre
+- `MODE` verde parpadeando: `Play`, esperando `START`
+- `MODE` verde fijo o deja de parpadear: el script debería estar corriendo
+- conecta el USB al host recién después de dejar la controladora en `Play + START`
 
 ### Cabeza OLLO / Pololu
 
@@ -327,8 +316,9 @@ ros2 topic pub --once /max/head_cmd_raw std_msgs/msg/UInt16 "{data: 680}"
 ros2 topic pub --once /max/head_cmd std_msgs/msg/Float32 "{data: 0.4}"
 ```
 
-Este bridge escribe `Remocon Data(59)` en la `CM-550`. Para mover la cabeza,
-la `CM-550` debe ejecutar un script que lea `Received Remocon Data(61)` y haga:
+Este bridge usa el mismo `cm550_remocon_bridge_node` y envía un paquete remoto
+al script de la `CM-550`. Para mover la cabeza, la controladora debe ejecutar un
+script que use `rc.read()` y haga:
 
 ```python
 OLLO(1, const.OLLO_JOINT_POSITION).write(valor)
@@ -928,7 +918,7 @@ Mensajes y servicios custom:
 - **`config/max_params_jetson.yaml`** - Parámetros para Jetson Nano (incluye GStreamer pipeline)
 - **`config/engineer_max_e2.yaml`** - Plantilla `joint_ids` / `joint_names` para humanoide Engineer (ajustar a tu robot)
 - **`config/max_params_motion.yaml`** - Parámetros para visión/control publicando acciones a `/max/motion_cmd`
-- **`config/cm550_motion_bridge_max_e2.yaml`** - Mapeo de acciones ROS 2 a páginas de motion del `MAX-E2`
+- **`config/cm550_motion_bridge_max_e2.yaml`** - Parámetros del puente serial unificado y mapeo de motions/cabeza/LED
 - **`config/head_ollo_bridge.yaml`** - Rango y presets para la cabeza OLLO/servo auxiliar
 - **`config/apriltag_head_search.yaml`** - Parámetros del barrido de cabeza y recentrado con AprilTag
 
