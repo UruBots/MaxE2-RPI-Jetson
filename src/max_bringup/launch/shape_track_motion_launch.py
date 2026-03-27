@@ -40,6 +40,22 @@ def generate_launch_description():
         output='screen',
     )
 
+    head_bridge = Node(
+        package='max_driver',
+        executable='head_ollo_bridge_node',
+        name='head_ollo_bridge_node',
+        parameters=[config_file],
+        output='screen',
+    )
+
+    led_bridge = Node(
+        package='max_driver',
+        executable='led_ollo_bridge_node',
+        name='led_ollo_bridge_node',
+        parameters=[config_file],
+        output='screen',
+    )
+
     debug_view = Node(
         package='max_vision',
         executable='debug_view_node',
@@ -48,4 +64,12 @@ def generate_launch_description():
         output='screen',
     )
 
-    return LaunchDescription([config_file_arg, shape_detector, tracker, motion_bridge, debug_view])
+    return LaunchDescription([
+        config_file_arg,
+        shape_detector,
+        tracker,
+        motion_bridge,
+        head_bridge,
+        led_bridge,
+        debug_view,
+    ])

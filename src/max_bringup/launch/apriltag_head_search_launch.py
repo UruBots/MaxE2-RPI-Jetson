@@ -41,6 +41,14 @@ def generate_launch_description():
         output='screen',
     )
 
+    led_bridge = Node(
+        package='max_driver',
+        executable='led_ollo_bridge_node',
+        name='led_ollo_bridge_node',
+        parameters=[config_file],
+        output='screen',
+    )
+
     controller = Node(
         package='max_control',
         executable='apriltag_head_search_node',
@@ -62,6 +70,7 @@ def generate_launch_description():
         apriltag_detector,
         motion_bridge,
         head_bridge,
+        led_bridge,
         controller,
         debug_view,
     ])
