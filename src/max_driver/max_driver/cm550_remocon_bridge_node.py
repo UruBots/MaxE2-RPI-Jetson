@@ -165,7 +165,11 @@ class Cm550RemoconBridgeNode(Node):
                 baudrate=self._baudrate,
                 timeout=self._serial_timeout_sec,
                 write_timeout=self._serial_timeout_sec,
+                rtscts=False,
+                dsrdtr=False,
             )
+            self._serial.setDTR(False)
+            self._serial.setRTS(False)
         except SerialException as exc:
             self.get_logger().error(f'No se pudo abrir puerto serial {self._port}: {exc}')
             self._serial = None
