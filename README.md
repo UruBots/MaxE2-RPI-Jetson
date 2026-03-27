@@ -299,6 +299,8 @@ Notas:
   para que coincida con las páginas reales cargadas en tu `CM-550`.
 - Si una motion necesita varias páginas, usa `command_sequences`, por ejemplo
   `walk:101|103` para `start -> go`.
+- El modo recomendado es `transport_mode: 'remocon'`: `ROS 2` escribe en `Remocon Data(59)`
+  y la `CM-550` ejecuta un script local que lee `Received Remocon Data(61)` y llama a `motion.play(...)`.
 - Este flujo asume que la `CM-550` ya tiene descargadas las motions `.mtn3` del robot.
 - Si quieres integrarlo con `action_executor_node`, remapea `command_topic` a
   `/max/current_action` y usa nombres compatibles en `command_map`.
@@ -307,6 +309,9 @@ Notas:
 ```bash
 python3 scripts/extract_cm550_motion_map.py /ruta/a/01_ENG2_Max_E2_MO.mtn3
 ```
+
+Ejemplo de receptor en la `CM-550`:
+- `docs/cm550_motion_remocon_receiver_example.py`
 
 ### Cabeza OLLO / Pololu
 

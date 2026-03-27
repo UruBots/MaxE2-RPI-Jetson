@@ -156,6 +156,7 @@ cm550_motion_bridge_node:
     baudrate: 57600
     protocol_version: 2.0
     controller_id: 200
+    transport_mode: 'remocon'
     motion_speed: 100
     command_topic: '/max/motion_cmd'
     page_topic: '/max/motion_page_cmd'

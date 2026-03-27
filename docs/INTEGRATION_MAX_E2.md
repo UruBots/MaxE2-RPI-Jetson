@@ -25,9 +25,11 @@ Archivos oficiales relevantes:
 La `CM-550` debe tener:
 - las motions `.mtn3` del `MAX-E2`
 - un script Python o lógica equivalente para mover la cabeza OLLO leyendo remocon data
+- un script Python o lógica equivalente para leer remocon data y llamar `motion.play(...)`
 
 Referencia local:
 - [`cm550_head_ollo_receiver_example.py`](/Users/sebastian/Desarrollo/max/docs/cm550_head_ollo_receiver_example.py)
+- [`cm550_motion_remocon_receiver_example.py`](/Users/sebastian/Desarrollo/max/docs/cm550_motion_remocon_receiver_example.py)
 
 ### En `ROS 2`
 
@@ -50,6 +52,12 @@ Haz las pruebas en este orden:
 
 ## 4. Probar motions del cuerpo
 
+La estrategia recomendada es:
+
+`ROS 2 -> Remocon Data(59) -> script Python en CM-550 -> motion.play(...)`
+
+No dependas de escribir `Motion Index Number (66)` directamente sobre el firmware oficial del `MAX-E2`.
+
 Lanza:
 
 ```bash
@@ -67,6 +75,9 @@ ros2 topic pub --once /max/motion_cmd std_msgs/msg/String "{data: turn_right}"
 
 Config:
 - [`cm550_motion_bridge_max_e2.yaml`](/Users/sebastian/Desarrollo/max/src/max_bringup/config/cm550_motion_bridge_max_e2.yaml)
+
+Script de ejemplo para la `CM-550`:
+- [`cm550_motion_remocon_receiver_example.py`](/Users/sebastian/Desarrollo/max/docs/cm550_motion_remocon_receiver_example.py)
 
 ## 5. Probar cabeza OLLO
 

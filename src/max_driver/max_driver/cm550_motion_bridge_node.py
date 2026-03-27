@@ -10,8 +10,10 @@ except ImportError:
     PortHandler = None
 
 
+ADDR_REMOCON_TX_DATA = 59
 ADDR_MOTION_PLAY_SPEED = 64
 ADDR_MOTION_INDEX_NUMBER = 66
+REMOCON_MOTION_BASE = 10000
 
 
 class Cm550MotionBridgeNode(Node):
@@ -43,7 +45,8 @@ class Cm550MotionBridgeNode(Node):
 
         self.get_logger().info(
             f'cm550_motion_bridge_node listo: cmd={self._command_topic}, '
-            f'page={self._page_topic}, controller_id={self._controller_id}'
+            f'page={self._page_topic}, controller_id={self._controller_id}, '
+            f'mode={self._transport_mode}'
         )
 
     def _declare_parameters(self):
@@ -51,6 +54,7 @@ class Cm550MotionBridgeNode(Node):
         self.declare_parameter('baudrate', 57600)
         self.declare_parameter('protocol_version', 2.0)
         self.declare_parameter('controller_id', 200)
+        self.declare_parameter('transport_mode', 'motion_index')
         self.declare_parameter('motion_speed', 100)
         self.declare_parameter('command_topic', '/max/motion_cmd')
         self.declare_parameter('page_topic', '/max/motion_page_cmd')
@@ -67,6 +71,9 @@ class Cm550MotionBridgeNode(Node):
         self._baudrate = self.get_parameter('baudrate').get_parameter_value().integer_value
         self._protocol_version = self.get_parameter('protocol_version').get_parameter_value().double_value
         self._controller_id = self.get_parameter('controller_id').get_parameter_value().integer_value
+        self._transport_mode = self.get_parameter(
+            'transport_mode'
+        ).get_parameter_value().string_value.strip().lower()
         self._motion_speed = self.get_parameter('motion_speed').get_parameter_value().integer_value
         self._command_topic = self.get_parameter('command_topic').get_parameter_value().string_value
         self._page_topic = self.get_parameter('page_topic').get_parameter_value().string_value
@@ -177,12 +184,15 @@ class Cm550MotionBridgeNode(Node):
             self.get_logger().error(f'Pagina fuera de rango: {page}')
             return False
 
+        address = ADDR_REMOCON_TX_DATA if self._transport_mode == 'remocon' else ADDR_MOTION_INDEX_NUMBER
+        value = REMOCON_MOTION_BASE + page if self._transport_mode == 'remocon' else page
+
         comm, err = self._packet_handler.write2ByteTxRx(
-            self._port_handler, self._controller_id, ADDR_MOTION_INDEX_NUMBER, page
+            self._port_handler, self._controller_id, address, value
         )
         if comm != COMM_SUCCESS or err != 0:
             self.get_logger().error(
-                f'Fallo al escribir motion page {page} desde {source_label}: '
+                f'Fallo al escribir motion page {page} (value={value}) desde {source_label} en addr {address}: '
                 f'{self._format_sdk_error(comm, err)}'
             )
             return False
@@ -192,7 +202,9 @@ class Cm550MotionBridgeNode(Node):
         status_msg.data = f'{source_label}:{page}'
         self._motion_status_pub.publish(status_msg)
         self._last_page_pub.publish(UInt16(data=page))
-        self.get_logger().info(f'Motion page enviada: {page} ({source_label})')
+        self.get_logger().info(
+            f'Motion value enviada: page={page}, value={value} ({source_label}, mode={self._transport_mode})'
+        )
         return True
 
     def _cancel_sequence(self):
@@ -237,6 +249,7 @@ class Cm550MotionBridgeNode(Node):
         command = self._normalize_command(msg.data)
         if not command:
             return
+        self.get_logger().info(f'Comando motion recibido: {command}')
         if not self._resend_same_command and command == self._last_command:
             return
 
@@ -259,6 +272,7 @@ class Cm550MotionBridgeNode(Node):
 
     def _on_motion_page(self, msg):
         page = int(msg.data)
+        self.get_logger().info(f'Pagina motion recibida: {page}')
         if not self._resend_same_command and self._last_page == page:
             return
         self._cancel_sequence()

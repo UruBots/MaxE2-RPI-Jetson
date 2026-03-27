@@ -13,6 +13,7 @@ except ImportError:
 
 
 ADDR_REMOCON_TX_DATA = 59
+REMOCON_HEAD_BASE = 30000
 
 
 class HeadOlloBridgeNode(Node):
@@ -126,6 +127,7 @@ class HeadOlloBridgeNode(Node):
 
     def _send_value(self, value, source):
         raw = self._clamp_raw(value)
+        encoded = REMOCON_HEAD_BASE + raw
         if not self._resend_same_value and raw == self._last_value:
             return
         if not self._port_open or self._packet_handler is None:
@@ -133,18 +135,18 @@ class HeadOlloBridgeNode(Node):
             return
 
         comm, err = self._packet_handler.write2ByteTxRx(
-            self._port_handler, self._controller_id, ADDR_REMOCON_TX_DATA, raw
+            self._port_handler, self._controller_id, ADDR_REMOCON_TX_DATA, encoded
         )
         if comm != COMM_SUCCESS or err != 0:
             self.get_logger().error(
-                f'Fallo al escribir head command {raw} desde {source}: '
+                f'Fallo al escribir head command {raw} (encoded={encoded}) desde {source}: '
                 f'{self._format_sdk_error(comm, err)}'
             )
             return
 
         self._last_value = raw
         self._status_pub.publish(UInt16(data=raw))
-        self.get_logger().info(f'Head command enviado: {raw} ({source})')
+        self.get_logger().info(f'Head command enviado: {raw} (encoded={encoded}, {source})')
 
     def _on_raw_cmd(self, msg):
         self._send_value(msg.data, 'raw')
