@@ -24,8 +24,8 @@ Archivos oficiales relevantes:
 
 La `CM-550` debe tener:
 - las motions `.mtn3` del `MAX-E2`
-- un script Python o lógica equivalente para mover la cabeza OLLO leyendo remocon data
-- un script Python o lógica equivalente para leer remocon data y llamar `motion.play(...)`
+- un script Python o lógica equivalente que lea `rc.read()`
+- manejo de motions, cabeza OLLO y LEDs desde ese `rc.read()`
 
 Referencia local:
 - [`cm550_head_ollo_receiver_example.py`](/Users/sebastian/Desarrollo/max/docs/cm550_head_ollo_receiver_example.py)
@@ -35,8 +35,7 @@ Referencia local:
 
 `ROS 2` corre:
 - detector de `AprilTag`
-- puente de motions hacia la `CM-550`
-- puente de cabeza OLLO hacia la `CM-550`
+- un único puente serial de `Remocon packet` hacia la `CM-550`
 - lógica de búsqueda y recentrado
 
 ## 3. Orden recomendado de bring-up
@@ -54,7 +53,7 @@ Haz las pruebas en este orden:
 
 La estrategia recomendada es:
 
-`ROS 2 -> Remocon Data(59) -> script Python en CM-550 -> motion.play(...)`
+`ROS 2 -> Remocon packet serial -> rc.read() en CM-550 -> motion.play(...)`
 
 No dependas de escribir `Motion Index Number (66)` directamente sobre el firmware oficial del `MAX-E2`.
 
@@ -76,8 +75,8 @@ ros2 topic pub --once /max/motion_cmd std_msgs/msg/String "{data: turn_right}"
 Config:
 - [`cm550_motion_bridge_max_e2.yaml`](/Users/sebastian/Desarrollo/max/src/max_bringup/config/cm550_motion_bridge_max_e2.yaml)
 
-Script de ejemplo para la `CM-550`:
-- [`cm550_motion_remocon_receiver_example.py`](/Users/sebastian/Desarrollo/max/docs/cm550_motion_remocon_receiver_example.py)
+Script listo para la `CM-550`:
+- [`01_ENG2_Max_E2_PY_ros2_ready.py`](/Users/sebastian/Desarrollo/max/docs/01_ENG2_Max_E2_PY_ros2_ready.py)
 
 ## 5. Probar cabeza OLLO
 
@@ -100,7 +99,7 @@ ros2 topic pub --once /max/head_cmd_raw std_msgs/msg/UInt16 "{data: 344}"
 Config:
 - [`head_ollo_bridge.yaml`](/Users/sebastian/Desarrollo/max/src/max_bringup/config/head_ollo_bridge.yaml)
 
-Para que esto funcione, la `CM-550` tiene que estar ejecutando el receptor de cabeza OLLO.
+Para que esto funcione, la `CM-550` tiene que estar ejecutando el script listo que usa `rc.read()`.
 
 ## 6. Probar detección de AprilTag
 
@@ -191,6 +190,6 @@ Es una base buena para:
 
 La mejora más útil después de esto es una de estas:
 
-1. integrar el receptor OLLO directamente dentro del Python oficial del `MAX-E2`
+1. calibrar valores de `target_size_px` / `target_area`
 2. hacer seguimiento fino con la cabeza después de encontrar el tag
 3. encadenar motions de cuerpo más suaves para recentrado

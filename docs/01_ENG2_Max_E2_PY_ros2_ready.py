@@ -879,7 +879,7 @@ def Led(nValue = 0):
         red_led.write(100 * (nValue % 2)) # 0~100
         blue_led.write(int(nValue / 2)) # 0~100
 
-# ROS 2 / Remocon bridge protocol
+# ROS 2 / Remocon bridge protocol via rc.read()
 # 10000 + motion_page => execute motion.play(page)
 # 20000..20003        => LED presets
 # 30000 + head_raw    => OLLO head raw position (0..1023)
@@ -903,27 +903,23 @@ def Clamp(nValue, nMin, nMax):
     return nValue
 
 def HandleRosRemocon():
-    if etc.read8(63) != 1:
+    if rc.received() != True:
         return False
 
-    nValue = int(etc.read16(61))
+    nValue = int(rc.read())
     IsHandled = False
 
-    # Motion pages sent by ROS 2 through cm550_motion_bridge_node.
+    # Motion pages sent by ROS 2 through cm550_remocon_bridge_node.
     if (nValue >= ROS_MOTION_BASE) and (nValue <= ROS_MOTION_MAX):
         Motion_Play(int(nValue - ROS_MOTION_BASE))
         IsHandled = True
-    # Backward-compatible direct motion page.
-    elif (nValue > 0) and (nValue < 1000):
-        Motion_Play(int(nValue))
-        IsHandled = True
-    # Head raw command sent by head_ollo_bridge_node.
+    # Head raw command sent by cm550_remocon_bridge_node.
     elif (nValue >= ROS_HEAD_MIN) and (nValue <= ROS_HEAD_MAX):
         nHead = Clamp(int(nValue - ROS_HEAD_BASE), ROS_HEAD_CLAMP_MIN, ROS_HEAD_CLAMP_MAX)
         CVar.nPos_Servo = nHead
         OLLO(1, const.OLLO_JOINT_POSITION).write(nHead)
         IsHandled = True
-    # LED presets sent by led_ollo_bridge_node.
+    # LED presets sent by cm550_remocon_bridge_node.
     elif nValue == ROS_LED_OFF:
         LedPwm(0, 0)
         IsHandled = True
@@ -937,8 +933,6 @@ def HandleRosRemocon():
         LedPwm(100, 100)
         IsHandled = True
 
-    if IsHandled:
-        etc.write8(63, 0)
     return IsHandled
 
 # 각도를 모터에서 사용하는 Data 로 바꾸어 주는 함수(float -> int)

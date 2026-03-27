@@ -27,24 +27,8 @@ def generate_launch_description():
 
     motion_bridge = Node(
         package='max_driver',
-        executable='cm550_motion_bridge_node',
-        name='cm550_motion_bridge_node',
-        parameters=[config_file],
-        output='screen',
-    )
-
-    head_bridge = Node(
-        package='max_driver',
-        executable='head_ollo_bridge_node',
-        name='head_ollo_bridge_node',
-        parameters=[config_file],
-        output='screen',
-    )
-
-    led_bridge = Node(
-        package='max_driver',
-        executable='led_ollo_bridge_node',
-        name='led_ollo_bridge_node',
+        executable='cm550_remocon_bridge_node',
+        name='cm550_remocon_bridge_node',
         parameters=[config_file],
         output='screen',
     )
@@ -69,8 +53,6 @@ def generate_launch_description():
         config_file_arg,
         apriltag_detector,
         motion_bridge,
-        head_bridge,
-        led_bridge,
         controller,
         debug_view,
     ])

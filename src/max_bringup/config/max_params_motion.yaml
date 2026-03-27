@@ -172,14 +172,14 @@ debug_view_node:
     panel_opacity: 0.7
     detection_timeout: 1.0
 
-cm550_motion_bridge_node:
+cm550_remocon_bridge_node:
   ros__parameters:
     port: '/dev/ttyACM0'
     baudrate: 57600
-    protocol_version: 2.0
-    controller_id: 200
-    transport_mode: 'remocon'
-    motion_speed: 100
+    serial_timeout_sec: 0.05
+    write_delay_sec: 0.02
+    resend_same_motion_command: false
+    resend_same_aux_command: false
     command_topic: '/max/motion_cmd'
     page_topic: '/max/motion_page_cmd'
     status_topic: '/max/motion_status'
@@ -189,33 +189,16 @@ cm550_motion_bridge_node:
     sequence_step_delay_sec: 0.8
     ignore_unknown_commands: true
     strip_action_metadata: true
-    resend_same_command: false
-
-head_ollo_bridge_node:
-  ros__parameters:
-    port: '/dev/ttyACM0'
-    baudrate: 57600
-    protocol_version: 2.0
-    controller_id: 200
-    raw_topic: '/max/head_cmd_raw'
-    angle_topic: '/max/head_cmd'
-    preset_topic: '/max/head_preset'
-    status_topic: '/max/head_cmd_sent'
+    head_raw_topic: '/max/head_cmd_raw'
+    head_angle_topic: '/max/head_cmd'
+    head_preset_topic: '/max/head_preset'
+    head_status_topic: '/max/head_cmd_sent'
     center_raw: 512
     min_raw: 344
     max_raw: 680
     radians_per_range: 1.5708
     preset_map: 'center:512,left:680,right:344'
-    resend_same_value: false
-
-led_ollo_bridge_node:
-  ros__parameters:
-    port: '/dev/ttyACM0'
-    baudrate: 57600
-    protocol_version: 2.0
-    controller_id: 200
-    preset_topic: '/max/led_preset'
-    raw_topic: '/max/led_cmd_raw'
-    status_topic: '/max/led_cmd_sent'
-    preset_map: 'off:20000,red:20001,blue:20002,magenta:20003'
-    resend_same_value: false
+    led_preset_topic: '/max/led_preset'
+    led_raw_topic: '/max/led_cmd_raw'
+    led_status_topic: '/max/led_cmd_sent'
+    led_preset_map: 'off:20000,red:20001,blue:20002,magenta:20003'

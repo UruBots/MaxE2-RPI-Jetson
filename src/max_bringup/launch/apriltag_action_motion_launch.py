@@ -34,8 +34,8 @@ def generate_launch_description():
 
     motion_bridge = Node(
         package='max_driver',
-        executable='cm550_motion_bridge_node',
-        name='cm550_motion_bridge_node',
+        executable='cm550_remocon_bridge_node',
+        name='cm550_remocon_bridge_node',
         parameters=[config_file],
         output='screen',
     )

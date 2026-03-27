@@ -14,13 +14,13 @@ def generate_launch_description():
     config_file_arg = DeclareLaunchArgument(
         'config_file',
         default_value=os.path.join(pkg_dir, 'config', 'head_ollo_bridge.yaml'),
-        description='YAML para head_ollo_bridge_node',
+        description='YAML para cm550_remocon_bridge_node',
     )
 
     node = Node(
         package='max_driver',
-        executable='head_ollo_bridge_node',
-        name='head_ollo_bridge_node',
+        executable='cm550_remocon_bridge_node',
+        name='cm550_remocon_bridge_node',
         parameters=[config_file],
         output='screen',
     )

@@ -896,19 +896,12 @@ Mensajes y servicios custom:
   - **No** ejecutes a la vez `dynamixel_node` y `engineer_joint_node` sobre el mismo CM-550 (conflicto de bus / comandos).
   - Debes alinear **`joint_ids`** y **`joint_names`** con tu ensamblaje (Dynamixel Wizard 2.0); la plantilla está en `config/engineer_max_e2.yaml`.
 
-- **`cm550_motion_bridge_node`** - Ejecuta páginas de motion cargadas en la `CM-550`
-  - Suscribe: `/max/motion_cmd` (`std_msgs/String`) y `/max/motion_page_cmd` (`std_msgs/UInt16`)
-  - Publica: `/max/motion_status`, `/max/motion_last_page`
-  - Escribe el registro `Motion Index Number (66)` del controlador
-  - Soporta `command_map` y `command_sequences` para acciones como `walk`, `turn_left`, `stop`
-  - Pensado para reutilizar las motions `.mtn3` oficiales del `MAX-E2`
-
-- **`head_ollo_bridge_node`** - Puente ROS 2 para la cabeza OLLO/servo auxiliar
-  - Suscribe: `/max/head_cmd_raw` (`std_msgs/UInt16`), `/max/head_cmd` (`std_msgs/Float32`), `/max/head_preset` (`std_msgs/String`)
-  - Publica: `/max/head_cmd_sent`
-  - Escribe `Remocon Data(59)` en la `CM-550`
-  - Requiere que la `CM-550` esté ejecutando un script que lea `Received Remocon Data(61)` y mueva `OLLO(1, const.OLLO_JOINT_POSITION)`
-  - Ejemplo mínimo en `docs/cm550_head_ollo_receiver_example.py`
+- **`cm550_remocon_bridge_node`** - Puente unificado ROS 2 → `Remocon packet` real hacia la `CM-550`
+  - Suscribe: `/max/motion_cmd`, `/max/motion_page_cmd`, `/max/head_cmd_raw`, `/max/head_cmd`, `/max/head_preset`, `/max/led_preset`, `/max/led_cmd_raw`
+  - Publica: `/max/motion_status`, `/max/motion_last_page`, `/max/head_cmd_sent`, `/max/led_cmd_sent`
+  - Envía paquetes tipo `RC-100` por serial USB/UART, para que la `CM-550` los reciba con `rc.read()`
+  - Unifica cuerpo, cabeza OLLO y LEDs en un solo acceso al puerto serial
+  - Pensado para reutilizar las motions `.mtn3` oficiales del `MAX-E2` sin usar `dynamixel_sdk` como transporte de runtime
 
 ### max_bringup
 
@@ -924,8 +917,8 @@ Mensajes y servicios custom:
 - **`teleop_launch.py`** - Teleoperación por teclado (`teleop_twist_keyboard` + `dynamixel_node`)
 - **`engineer_joint_launch.py`** - Solo control articulaciones Engineer / MAX-E2 (`engineer_joint_node`)
 - **`engineer_joints_teleop_launch.py`** - `engineer_joint_node` + `joint_teleop_node` (mismo `engineer_max_e2.yaml`)
-- **`cm550_motion_bridge_launch.py`** - Puente ROS 2 → motions `.mtn3` ya cargadas en la `CM-550`
-- **`head_ollo_bridge_launch.py`** - Puente ROS 2 → cabeza OLLO/servo auxiliar en `Port 1`
+- **`cm550_motion_bridge_launch.py`** - Puente unificado ROS 2 → `Remocon packet` → `CM-550`
+- **`head_ollo_bridge_launch.py`** - Prueba aislada de cabeza OLLO usando el puente unificado
 - **`apriltag_head_search_launch.py`** - Detector de AprilTag + barrido de cabeza + recentrado de cuerpo
 - **`vision_only_launch.py`** - Solo visión y control (sin hardware, para testing)
 
@@ -1045,9 +1038,9 @@ ros2 run max_control joint_teleop_node
 ros2 run max_driver dynamixel_node --ros-args -p port:=/dev/ttyACM0
 ros2 run max_driver engineer_joint_node --ros-args \
   --params-file $(ros2 pkg prefix max_bringup)/share/max_bringup/config/engineer_max_e2.yaml
-ros2 run max_driver cm550_motion_bridge_node --ros-args \
+ros2 run max_driver cm550_remocon_bridge_node --ros-args \
   --params-file $(ros2 pkg prefix max_bringup)/share/max_bringup/config/cm550_motion_bridge_max_e2.yaml
-ros2 run max_driver head_ollo_bridge_node --ros-args \
+ros2 run max_driver cm550_remocon_bridge_node --ros-args \
   --params-file $(ros2 pkg prefix max_bringup)/share/max_bringup/config/head_ollo_bridge.yaml
 ros2 run teleop_twist_keyboard teleop_twist_keyboard
 
