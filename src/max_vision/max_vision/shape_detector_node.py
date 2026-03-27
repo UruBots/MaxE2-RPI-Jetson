@@ -36,6 +36,10 @@ class ShapeDetectorNode(Node):
         self.declare_parameter('upper_h', 180)
         self.declare_parameter('upper_s', 255)
         self.declare_parameter('upper_v', 255)
+        self.declare_parameter('lower_h2', 0)
+        self.declare_parameter('upper_h2', 0)
+        self.declare_parameter('use_second_range', False)
+        self.declare_parameter('color_preset', 'custom')
         self.declare_parameter('min_contour_area', 800)
         self.declare_parameter('max_contour_area', 100000)
         self.declare_parameter('blur_kernel', 5)
@@ -138,17 +142,46 @@ class ShapeDetectorNode(Node):
         blurred = cv2.GaussianBlur(frame, (blur_k, blur_k), 0)
         hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
 
-        lower = np.array([
-            self.get_parameter('lower_h').get_parameter_value().integer_value,
-            self.get_parameter('lower_s').get_parameter_value().integer_value,
-            self.get_parameter('lower_v').get_parameter_value().integer_value,
-        ])
-        upper = np.array([
-            self.get_parameter('upper_h').get_parameter_value().integer_value,
-            self.get_parameter('upper_s').get_parameter_value().integer_value,
-            self.get_parameter('upper_v').get_parameter_value().integer_value,
-        ])
+        color_preset = self.get_parameter('color_preset').get_parameter_value().string_value.lower()
+        presets = {
+            'red': ((0, 120, 70), (10, 255, 255), (170, 120, 70), (180, 255, 255), True),
+            'orange': ((5, 150, 120), (25, 255, 255), (0, 0, 0), (0, 0, 0), False),
+            'yellow': ((25, 120, 120), (40, 255, 255), (0, 0, 0), (0, 0, 0), False),
+            'blue': ((90, 120, 70), (125, 255, 255), (0, 0, 0), (0, 0, 0), False),
+            'green': ((40, 70, 70), (85, 255, 255), (0, 0, 0), (0, 0, 0), False),
+        }
+
+        if color_preset in presets:
+            lower1, upper1, lower2, upper2, use_second = presets[color_preset]
+        else:
+            lower1 = (
+                self.get_parameter('lower_h').get_parameter_value().integer_value,
+                self.get_parameter('lower_s').get_parameter_value().integer_value,
+                self.get_parameter('lower_v').get_parameter_value().integer_value,
+            )
+            upper1 = (
+                self.get_parameter('upper_h').get_parameter_value().integer_value,
+                self.get_parameter('upper_s').get_parameter_value().integer_value,
+                self.get_parameter('upper_v').get_parameter_value().integer_value,
+            )
+            lower2 = (
+                self.get_parameter('lower_h2').get_parameter_value().integer_value,
+                self.get_parameter('lower_s').get_parameter_value().integer_value,
+                self.get_parameter('lower_v').get_parameter_value().integer_value,
+            )
+            upper2 = (
+                self.get_parameter('upper_h2').get_parameter_value().integer_value,
+                self.get_parameter('upper_s').get_parameter_value().integer_value,
+                self.get_parameter('upper_v').get_parameter_value().integer_value,
+            )
+            use_second = self.get_parameter('use_second_range').get_parameter_value().bool_value
+
+        lower = np.array(lower1)
+        upper = np.array(upper1)
         mask = cv2.inRange(hsv, lower, upper)
+        if use_second:
+            mask2 = cv2.inRange(hsv, np.array(lower2), np.array(upper2))
+            mask = cv2.bitwise_or(mask, mask2)
 
         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (morph_k, morph_k))
         mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)

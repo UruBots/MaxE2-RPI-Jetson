@@ -239,3 +239,81 @@ La mejora más útil después de esto es una de estas:
 1. calibrar valores de `target_size_px` / `target_area`
 2. hacer seguimiento fino con la cabeza después de encontrar el tag
 3. encadenar motions de cuerpo más suaves para recentrado
+
+## 11. Seguimiento de pelota por color
+
+Esta ruta usa solo visión + bridge CM-550, sin joystick:
+
+```bash
+ros2 launch max_bringup shape_track_motion_launch.py
+```
+
+Lo que corre:
+- `shape_detector_node`: detecta la pelota por color (HSV) y publica en `/max/detection`.
+- `tracker_node`: centra la pelota con giros y avanza/retrocede según área, publicando `walk/turn_left/turn_right/reverse/stop` en `/max/motion_cmd`.
+- `cm550_remocon_bridge_node`: traduce esos comandos a remocon packets para la CM-550.
+
+### Colores preconfigurados
+
+Ambos nodos de visión aceptan el parámetro `color_preset`:
+- Valores: `red`, `orange`, `yellow`, `blue`, `green`, `custom`
+- Por defecto: `orange`
+- Cambio en caliente (sin relanzar):
+  ```bash
+  ros2 param set /shape_detector_node color_preset blue
+  ros2 param set /detector_node color_preset blue
+  ```
+
+### Ajuste fino (modo custom)
+
+Si necesitas otro color, pon `color_preset:=custom` y ajusta rangos HSV:
+- `lower_h`, `lower_s`, `lower_v`
+- `upper_h`, `upper_s`, `upper_v`
+- Segundo rango opcional (útil para rojo): `lower_h2`, `upper_h2`, `use_second_range`
+
+Archivos de configuración:
+- Con motions: `src/max_bringup/config/max_params_motion.yaml`
+- Solo visión: `src/max_bringup/config/max_params.yaml`
+
+### Notas de control
+- Distancia: `tracker_node` usa el área de la pelota para avanzar (`forward_command: walk`) o retroceder (`reverse_command: reverse`) según `target_area` y `area_tolerance`.
+- Búsqueda: si se pierde la pelota y `search_enabled` está en `false` (default), el cuerpo se queda quieto; ponlo en `true` si quieres giro de búsqueda.
+- Cabeza: este pipeline no mueve la cabeza; si necesitas tracking con cabeza, habilita `head_tracking_enabled` y ajusta `head_*` en `max_params_motion.yaml`.
+
+## 12. Teleoperación por teclado hacia la CM-550
+
+Controla el robot con el teclado y mapea a motions discretas (remocon) sin depender de /cmd_vel continuo.
+
+Lanzar:
+```bash
+ros2 launch max_bringup teleop_cm550_launch.py
+```
+
+Nodos:
+- `teleop_twist_keyboard`: publica `/cmd_vel` con las teclas estándar (i/k/j/l, etc.).
+- `twist_to_motion_node`: convierte `/cmd_vel` en comandos discretos (`walk`, `reverse`, `turn_left`, `turn_right`, `stop`) y los publica en `/max/motion_cmd`.
+- `cm550_remocon_bridge_node`: traduce esos comandos a paquetes remocon para la CM-550.
+
+Config principal:
+- Archivo: `src/max_bringup/config/cm550_motion_bridge_max_e2.yaml`
+- Sección `twist_to_motion_node`:
+  - `forward_command`: `walk`
+  - `backward_command`: `reverse`
+  - `left_command`: `turn_left`
+  - `right_command`: `turn_right`
+  - `stop_command`: `stop`
+  - `linear_threshold`, `angular_threshold`: umbrales de activación.
+  - `prefer_turn_over_forward`: si `true`, prioriza giro cuando hay giro y avance a la vez.
+- Sección `teleop_twist_keyboard`:
+  - `speed`, `turn`: ganancias de velocidad lineal/angulares del nodo de teclado.
+
+Ajustes en caliente:
+```bash
+ros2 param set /twist_to_motion_node forward_command run          # usar otra motion
+ros2 param set /twist_to_motion_node prefer_turn_over_forward false
+ros2 param set /teleop_twist_keyboard speed 0.3
+```
+
+Notas:
+- No mezcles este launch con otros que también publiquen en `/cmd_vel` o `/max/motion_cmd` (tracker, line_tracker, action_executor) para evitar que se pisen.
+- El mapping a motions depende de que esas motions existan en la CM-550 (ver `command_map` en `cm550_motion_bridge_max_e2.yaml`).
