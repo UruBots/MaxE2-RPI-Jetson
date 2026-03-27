@@ -78,6 +78,8 @@ class Cm550RemoconBridgeNode(Node):
         self.declare_parameter('sequence_step_delay_sec', 0.6)
         self.declare_parameter('ignore_unknown_commands', True)
         self.declare_parameter('strip_action_metadata', True)
+        # Repetición opcional de la marcha: walk -> start(101) + N veces go(103)
+        self.declare_parameter('walk_repeat_count', 1)
 
         self.declare_parameter('head_raw_topic', '/max/head_cmd_raw')
         self.declare_parameter('head_angle_topic', '/max/head_cmd')
@@ -127,6 +129,9 @@ class Cm550RemoconBridgeNode(Node):
         )
         self._strip_action_metadata = (
             self.get_parameter('strip_action_metadata').get_parameter_value().bool_value
+        )
+        self._walk_repeat_count = max(
+            1, self.get_parameter('walk_repeat_count').get_parameter_value().integer_value
         )
 
         self._head_raw_topic = self.get_parameter('head_raw_topic').get_parameter_value().string_value
@@ -320,6 +325,12 @@ class Cm550RemoconBridgeNode(Node):
         if not command:
             return
         if not self._resend_same_motion_command and command == self._last_motion_command:
+            return
+        # Manejo especial: repetir walk N veces con start+go
+        if command == 'walk' and self._walk_repeat_count > 1:
+            pages = [101] + [103] * self._walk_repeat_count
+            if self._start_sequence('walk', pages):
+                self._last_motion_command = command
             return
         if command in self._command_sequences:
             if self._start_sequence(command, self._command_sequences[command]):

@@ -189,6 +189,7 @@ cm550_remocon_bridge_node:
     sequence_step_delay_sec: 0.8
     ignore_unknown_commands: true
     strip_action_metadata: true
+    walk_repeat_count: 1
     head_raw_topic: '/max/head_cmd_raw'
     head_angle_topic: '/max/head_cmd'
     head_preset_topic: '/max/head_preset'
