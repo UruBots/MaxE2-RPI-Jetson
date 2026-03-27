@@ -15,6 +15,7 @@ from pycm import *
 #   40002                 -> torque ON
 #   40003                 -> torque OFF
 #   40004                 -> stop motion
+#   50000 + vel           -> Profile Velocity (todos los DXL), 0..300 recomendado
 #
 # Pensado para MAX E2 real con 17 motores y conexión USB.
 # Sin smart app, sin rpi.mode(), sin streaming.
@@ -46,6 +47,7 @@ ROS_CMD_FIGHT_READY = 40001
 ROS_CMD_TORQUE_ON = 40002
 ROS_CMD_TORQUE_OFF = 40003
 ROS_CMD_STOP = 40004
+ROS_VEL_BASE = 50000
 
 # Ajuste fino de rango de cabeza para no forzar mecánica
 ROS_HEAD_CLAMP_MIN = 280
@@ -229,6 +231,11 @@ def HandleRosRemocon():
         return True
     if nValue == ROS_CMD_STOP:
         Motion_Stop()
+        return True
+    if (nValue >= ROS_VEL_BASE) and (nValue <= ROS_VEL_BASE + 65535):
+        vel = nValue - ROS_VEL_BASE
+        # Profile Velocity recomendado: 0 (sin límite) o hasta ~300 para marcha lenta.
+        DXL(254).write32(112, vel)
         return True
 
     return False

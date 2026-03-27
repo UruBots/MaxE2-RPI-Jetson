@@ -107,6 +107,12 @@ Config:
 
 Script listo para la `CM-550`:
 - [`01_ENG2_Max_E2_PY_ros2_ready.py`](/Users/sebastian/Desarrollo/max/docs/01_ENG2_Max_E2_PY_ros2_ready.py)
+- [`max_e2_cm550_ros2_usb_bridge.py`](/Users/sebastian/Desarrollo/max/docs/max_e2_cm550_ros2_usb_bridge.py)
+
+Control de velocidad desde ROS:
+- publica `UInt16` en `/max/profile_velocity`
+- el bridge envía `50000 + vel` y el script hace `DXL(254).write32(112, vel)` (Profile Velocity global)
+- valores típicos: `20..80` para marcha lenta, `0` = sin límite
 
 Orden correcto de prueba:
 

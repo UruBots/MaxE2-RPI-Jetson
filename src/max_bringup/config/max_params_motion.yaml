@@ -203,3 +203,4 @@ cm550_remocon_bridge_node:
     led_raw_topic: '/max/led_cmd_raw'
     led_status_topic: '/max/led_cmd_sent'
     led_preset_map: 'off:20000,red:20001,blue:20002,magenta:20003'
+    speed_topic: '/max/profile_velocity'

@@ -21,6 +21,7 @@ LED_RED = 20001
 LED_BLUE = 20002
 LED_MAGENTA = 20003
 HEAD_BASE = 30000
+SPEED_BASE = 50000
 
 
 class Cm550RemoconBridgeNode(Node):
@@ -53,6 +54,7 @@ class Cm550RemoconBridgeNode(Node):
         self.create_subscription(String, self._head_preset_topic, self._on_head_preset, 10)
         self.create_subscription(String, self._led_preset_topic, self._on_led_preset, 10)
         self.create_subscription(UInt16, self._led_raw_topic, self._on_led_raw, 10)
+        self.create_subscription(UInt16, self._speed_topic, self._on_speed_cmd, 10)
 
         self._open_serial()
         self.get_logger().info(
@@ -95,6 +97,7 @@ class Cm550RemoconBridgeNode(Node):
         self.declare_parameter('led_raw_topic', '/max/led_cmd_raw')
         self.declare_parameter('led_status_topic', '/max/led_cmd_sent')
         self.declare_parameter('led_preset_map', 'off:20000,red:20001,blue:20002,magenta:20003')
+        self.declare_parameter('speed_topic', '/max/profile_velocity')
 
         self._port = self.get_parameter('port').get_parameter_value().string_value
         self._baudrate = self.get_parameter('baudrate').get_parameter_value().integer_value
@@ -160,6 +163,7 @@ class Cm550RemoconBridgeNode(Node):
         self._led_preset_map_raw = self.get_parameter(
             'led_preset_map'
         ).get_parameter_value().string_value
+        self._speed_topic = self.get_parameter('speed_topic').get_parameter_value().string_value
 
     def _open_serial(self):
         if serial is None:
@@ -398,6 +402,11 @@ class Cm550RemoconBridgeNode(Node):
 
     def _on_led_raw(self, msg):
         self._send_led_value(msg.data, 'led_raw')
+
+    def _on_speed_cmd(self, msg):
+        raw = int(max(0, min(65535 - SPEED_BASE, msg.data)))
+        encoded = SPEED_BASE + raw
+        self._send_value(encoded, 'speed_cmd')
 
     def destroy_node(self):
         self._cancel_sequence()
