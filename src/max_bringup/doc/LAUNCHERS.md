@@ -9,7 +9,7 @@ Este proyecto se usa **por Remocon** (`cm550_remocon_bridge_node` → CM-550). L
 | `preflight_launch.py` | Comprobar cámara y puerto serial | `preflight_check_node`. YAML típico: `cm550_motion_bridge_max_e2.yaml`. |
 | `cm550_motion_bridge_launch.py` | Solo puente ROS → paquetes Remocon → CM-550 | `cm550_remocon_bridge_node` + `cm550_motion_bridge_max_e2.yaml`. |
 | `motion_mux_launch.py` | Una fuente activa hacia `/max/motion_cmd` | `motion_mux_node`: `active_source` = `teleop` \| `tracker` \| `apriltag` \| `line`. |
-| `teleop_cm550_launch.py` | Teclado → `/cmd_vel` → motions discretas → Remocon | `teleop_twist_keyboard`, `twist_to_motion_node` → `/max/motion_cmd_teleop`, `cm550_remocon_bridge_node`. Si falla termios: `teleop_prefix:='xterm -hold -e '`. |
+| `teleop_cm550_launch.py` | Teclado → `/cmd_vel` → motions discretas → Remocon | `teleop_twist_keyboard`, `twist_to_motion_node` → `/max/motion_cmd_teleop`, `cm550_remocon_bridge_node`. Por **SSH sin escritorio**: `include_teleop:=false` y en otra sesión `ssh -t` ejecuta `teleop_twist_keyboard` con el mismo YAML. Con escritorio: `teleop_prefix:='xterm -hold -e '` o `gnome-terminal -- ` (requiere `DISPLAY`; `ssh -X` si el teleop va en tu PC). |
 | `line_follow_motion_launch.py` | Línea → acciones **motion** | `line_detector_node`, `line_tracker_node` (motion), `cm550_remocon_bridge_node`, `debug_view_node`. `max_params_motion.yaml`. |
 | `shape_track_motion_launch.py` | Forma/color → motions | `shape_detector_node`, `tracker_node`, `cm550_remocon_bridge_node`, `debug_view_node`. `max_params_motion.yaml`. |
 | `apriltag_action_motion_launch.py` | AprilTag → acciones **motion** | `apriltag_detector_node`, `action_executor_node`, `cm550_remocon_bridge_node`, `debug_view_node`. `max_params_motion.yaml`. |
@@ -46,4 +46,7 @@ ros2 launch max_bringup line_follow_motion_launch.py
 ros2 launch max_bringup preflight_launch.py
 
 ros2 launch max_bringup teleop_cm550_launch.py teleop_prefix:='xterm -hold -e '
+
+# Solo bridge + mapper; teleop en otra terminal (ssh -t) con el mismo params-file
+ros2 launch max_bringup teleop_cm550_launch.py include_teleop:=false
 ```

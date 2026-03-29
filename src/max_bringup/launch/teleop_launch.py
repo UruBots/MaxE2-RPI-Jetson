@@ -53,8 +53,8 @@ def generate_launch_description():
         'teleop_prefix',
         default_value='',
         description=(
-            'Prefijo TTY para teleop_twist_keyboard, p. ej. "xterm -hold -e " '
-            '(espacio final). Vacío si stdin ya es terminal.'
+            'Prefijo TTY para teleop_twist_keyboard: "xterm -hold -e " (apt install xterm) '
+            'o "gnome-terminal -- ". Vacío si stdin ya es terminal.'
         ),
     )
 
