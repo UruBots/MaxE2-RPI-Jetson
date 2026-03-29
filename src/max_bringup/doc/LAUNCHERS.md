@@ -2,7 +2,7 @@
 
 Este proyecto se usa **por Remocon** (`cm550_remocon_bridge_node` → CM-550). La tabla prioriza ese flujo; los launches que arrancan `dynamixel_node` y `/cmd_vel` se listan como **legacy**.
 
-**Teleop por SSH / TTY / xterm:** guía detallada en [TELEOP_SSH.md](TELEOP_SSH.md) (`include_teleop:=false`, `DISPLAY`, `ssh -X`, `ssh -t`).
+**Teleop por SSH / TTY / xterm:** [TELEOP_SSH.md](TELEOP_SSH.md). **Cadena tecla → página motion (101/103):** [MOTION_TELEOP.md](MOTION_TELEOP.md).
 
 ## Stack Remocon (soportado)
 

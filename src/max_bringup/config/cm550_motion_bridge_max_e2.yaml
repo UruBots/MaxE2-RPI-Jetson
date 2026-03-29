@@ -11,8 +11,13 @@ cm550_remocon_bridge_node:
     page_topic: '/max/motion_page_cmd'
     status_topic: '/max/motion_status'
     last_page_topic: '/max/motion_last_page'
+    # walk/follow: una sola página 103 — el firmware ros2_ready hace Motion_Play(101,103) al recibir 10000+103.
+    # No duplicar aquí walk/follow en command_sequences: si están en sequences, el bridge manda 101 y luego 103;
+    # el 101 suelto ejecuta solo Motion_Play(101). Ver doc/MOTION_TELEOP.md
     command_map: 'walk:103,follow:103,stop:1,idle:1,turn_left:50,spin_left:50,turn_right:51,spin_right:51,reverse:158,stand:1,stand_up:3,sitdown:60,hello:5,clap:9'
-    command_sequences: 'walk:101|103,follow:101|103,reverse:156|158'
+    # reverse/turn: una sola página vía command_map (igual que walk). Si tu .mtn3
+    # necesita secuencia 156|158 para marcha atrás, vuelve a poner: reverse:156|158
+    command_sequences: ''
     sequence_step_delay_sec: 0.8
     ignore_unknown_commands: true
     strip_action_metadata: true
@@ -60,6 +65,8 @@ twist_to_motion_node:
     profile_velocity_max: 120
     profile_velocity_min: 0
     linear_speed_full_scale: 0.4  # m/s que equivalen a vel máxima enviada
+    # >0: republica el último comando de motion mientras /cmd_vel siga activo (por si el puente debe reenviar)
+    republish_interval_sec: 0.0
 
 motion_mux_node:
   ros__parameters:

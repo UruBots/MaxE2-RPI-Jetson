@@ -24,6 +24,7 @@ Proyecto para operar un robot **ROBOTIS MAX-E2** (CM-550) desde una **Raspberry 
 - [Visión y seguimiento (→ motions)](#visión-y-seguimiento--motions)
 - [Launchers (max_bringup)](src/max_bringup/doc/LAUNCHERS.md)
 - [Teleop CM-550 por SSH / TTY](src/max_bringup/doc/TELEOP_SSH.md)
+- [Teleop: de teclas a páginas motion (101/103)](src/max_bringup/doc/MOTION_TELEOP.md)
 - [Recursos](#recursos)
 
 ---
@@ -804,7 +805,7 @@ Mensajes y servicios custom:
 - **`cm550_motion_bridge_launch.py`** — solo puente → CM-550
 - **`preflight_launch.py`** — comprobar cámara y puerto antes de arrancar
 - **`motion_mux_launch.py`** — una fuente activa entre `/max/motion_cmd_teleop`, `…_tracker`, etc.
-- **`teleop_cm550_launch.py`** — teclado → `/cmd_vel` → `twist_to_motion_node` → `/max/motion_cmd` → puente; por SSH ver [TELEOP_SSH.md](src/max_bringup/doc/TELEOP_SSH.md)
+- **`teleop_cm550_launch.py`** — teclado → `/cmd_vel` → `twist_to_motion_node` → `/max/motion_cmd` → puente; SSH: [TELEOP_SSH.md](src/max_bringup/doc/TELEOP_SSH.md); páginas motion / 101–103: [MOTION_TELEOP.md](src/max_bringup/doc/MOTION_TELEOP.md)
 - **`line_follow_motion_launch.py`**, **`shape_track_motion_launch.py`**, **`apriltag_action_motion_launch.py`** — visión + acciones como **motions**
 - **`apriltag_head_search_launch.py`** — AprilTag + cabeza + cuerpo por Remocon
 - **`head_ollo_bridge_launch.py`**, **`led_ollo_bridge_launch.py`** — cabeza / LEDs vía el mismo puente

@@ -347,7 +347,7 @@ class Cm550RemoconBridgeNode(Node):
             return
         if command not in self._command_map:
             if self._ignore_unknown:
-                self.get_logger().debug(f'Ignorando comando sin mapa: {command}')
+                self.get_logger().warning(f'Comando sin mapa (ignorado): {command}')
                 return
             self.get_logger().warn(f'Comando sin mapa: {command}')
             return

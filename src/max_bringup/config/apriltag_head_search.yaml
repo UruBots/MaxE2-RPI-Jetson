@@ -27,7 +27,7 @@ cm550_remocon_bridge_node:
     status_topic: '/max/motion_status'
     last_page_topic: '/max/motion_last_page'
     command_map: 'stop:1,idle:1,turn_left:50,spin_left:50,turn_right:51,spin_right:51,stand:1,walk:103,reverse:158'
-    command_sequences: 'walk:101|103,reverse:156|158'
+    command_sequences: ''
     sequence_step_delay_sec: 0.8
     ignore_unknown_commands: true
     strip_action_metadata: true

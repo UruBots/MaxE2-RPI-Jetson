@@ -23,6 +23,7 @@ class TwistToMotionNode(Node):
         self.declare_parameter('profile_velocity_max', 120)
         self.declare_parameter('profile_velocity_min', 0)
         self.declare_parameter('linear_speed_full_scale', 0.4)  # m/s que equivale a vel máxima
+        self.declare_parameter('republish_interval_sec', 0.0)
 
         self.motion_topic = self.get_parameter('motion_topic').get_parameter_value().string_value
         self.forward_command = self.get_parameter('forward_command').get_parameter_value().string_value
@@ -39,6 +40,7 @@ class TwistToMotionNode(Node):
         self.pv_max = max(0, self.get_parameter('profile_velocity_max').get_parameter_value().integer_value)
         self.pv_min = max(0, self.get_parameter('profile_velocity_min').get_parameter_value().integer_value)
         self.full_scale = max(0.001, self.get_parameter('linear_speed_full_scale').get_parameter_value().double_value)
+        self._republish_interval = max(0.0, self.get_parameter('republish_interval_sec').get_parameter_value().double_value)
 
         self.pub = self.create_publisher(String, self.motion_topic, 10)
         self.speed_pub = self.create_publisher(UInt16, self.speed_topic, 10)
@@ -46,9 +48,21 @@ class TwistToMotionNode(Node):
 
         self._last_cmd = None
         self._last_speed = None
+        self._cmd_vel_active = False
+        if self._republish_interval > 0.0:
+            self.create_timer(self._republish_interval, self._on_republish_timer)
+
         self.get_logger().info(
             f'twist_to_motion_node listo: /cmd_vel -> {self.motion_topic} y vel -> {self.speed_topic}'
+            + (f', republish {self._republish_interval}s' if self._republish_interval > 0.0 else '')
         )
+
+    def _on_republish_timer(self):
+        if not self._cmd_vel_active:
+            return
+        if not self._last_cmd or self._last_cmd == self.stop_command:
+            return
+        self.pub.publish(String(data=self._last_cmd))
 
     def _publish_if_changed(self, command: str):
         if command == self._last_cmd:
@@ -78,10 +92,22 @@ class TwistToMotionNode(Node):
         abs_ang = abs(ang)
 
         if abs_lin < self.lin_th and abs_ang < self.ang_th:
+            self._cmd_vel_active = False
             self._publish_if_changed(self.stop_command)
             self._publish_speed(0.0)
             return
 
+        self._cmd_vel_active = True
+        # Priorizar retroceso/avance cuando |v| >= |ω|: evita que un giro residual
+        # impida `reverse` con la tecla de atrás (teleop suele mandar angular ~0).
+        if lin < -self.lin_th and abs_lin >= abs_ang:
+            self._publish_if_changed(self.backward_command)
+            self._publish_speed(lin)
+            return
+        if lin > self.lin_th and abs_lin >= abs_ang:
+            self._publish_if_changed(self.forward_command)
+            self._publish_speed(lin)
+            return
         if self.prefer_turn and abs_ang >= self.ang_th and abs_ang >= abs_lin:
             self._publish_if_changed(self.left_command if ang > 0 else self.right_command)
             self._publish_speed(0.0)

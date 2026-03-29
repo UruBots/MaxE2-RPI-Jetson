@@ -190,7 +190,7 @@ cm550_remocon_bridge_node:
     status_topic: '/max/motion_status'
     last_page_topic: '/max/motion_last_page'
     command_map: 'walk:103,follow:103,stop:1,idle:1,turn_left:50,spin_left:50,turn_right:51,spin_right:51,reverse:158,stand:1,sprint:153,dance:9'
-    command_sequences: 'walk:101|103,follow:101|103,reverse:156|158,sprint:151|153'
+    command_sequences: 'sprint:151|153'
     sequence_step_delay_sec: 0.8
     ignore_unknown_commands: true
     strip_action_metadata: true
@@ -225,3 +225,4 @@ twist_to_motion_node:
     profile_velocity_max: 120
     profile_velocity_min: 0
     linear_speed_full_scale: 0.4  # m/s que equivalen a vel máxima enviada
+    republish_interval_sec: 0.0
