@@ -10,8 +10,12 @@ def generate_launch_description():
     pkg_dir = get_package_share_directory('max_bringup')
 
     platform_arg = DeclareLaunchArgument(
-        'platform', default_value='rpi',
-        description='Platform: rpi or jetson'
+        'platform',
+        default_value='rpi',
+        description=(
+            'Reservado (compatibilidad). No cambia el YAML: en Jetson usa '
+            'config_file apuntando a config/max_params_jetson.yaml.'
+        ),
     )
 
     config_file = LaunchConfiguration('config_file', default=os.path.join(

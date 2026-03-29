@@ -1,5 +1,7 @@
 # Integración MAX-E2 con ROS 2 y CM-550
 
+El despliegue soportado en este repositorio usa **solo el puente Remocon** hacia la CM-550 (ver README principal). Esta guía describe ese flujo.
+
 Guía operativa corta para dejar el `MAX-E2` funcionando con:
 - motions oficiales en la `CM-550`
 - control de cabeza OLLO
@@ -14,9 +16,9 @@ Necesitas:
 - cámara funcionando
 - `ROS 2` instalado en la Raspberry Pi 4
 
-Archivos oficiales relevantes:
-- [`01_ENG2_Max_E2_PY.py`](/Users/sebastian/Downloads/01_ENG2_Max_E2_PY.py)
-- [`01_ENG2_Max_E2_MO.mtn3`](/Users/sebastian/Downloads/01_ENG2_Max_E2_MO.mtn3)
+Archivos oficiales ROBOTIS (descarga desde el kit; no van en este repo):
+- `01_ENG2_Max_E2_PY.py`
+- `01_ENG2_Max_E2_MO.mtn3`
 
 ## 2. Qué corre en cada lado
 
@@ -27,9 +29,9 @@ La `CM-550` debe tener:
 - un script Python o lógica equivalente que lea `rc.read()`
 - manejo de motions, cabeza OLLO y LEDs desde ese `rc.read()`
 
-Referencia local:
-- [`cm550_head_ollo_receiver_example.py`](/Users/sebastian/Desarrollo/max/docs/cm550_head_ollo_receiver_example.py)
-- [`cm550_motion_remocon_receiver_example.py`](/Users/sebastian/Desarrollo/max/docs/cm550_motion_remocon_receiver_example.py)
+Referencia en este repo:
+- [`cm550_head_ollo_receiver_example.py`](cm550_head_ollo_receiver_example.py)
+- [`cm550_motion_remocon_receiver_example.py`](cm550_motion_remocon_receiver_example.py)
 
 ### En `ROS 2`
 
@@ -103,11 +105,11 @@ ros2 topic pub --once /max/motion_cmd std_msgs/msg/String "{data: turn_right}"
 ```
 
 Config:
-- [`cm550_motion_bridge_max_e2.yaml`](/Users/sebastian/Desarrollo/max/src/max_bringup/config/cm550_motion_bridge_max_e2.yaml)
+- [`cm550_motion_bridge_max_e2.yaml`](../src/max_bringup/config/cm550_motion_bridge_max_e2.yaml)
 
 Script listo para la `CM-550`:
-- [`01_ENG2_Max_E2_PY_ros2_ready.py`](/Users/sebastian/Desarrollo/max/docs/01_ENG2_Max_E2_PY_ros2_ready.py)
-- [`max_e2_cm550_ros2_usb_bridge.py`](/Users/sebastian/Desarrollo/max/docs/max_e2_cm550_ros2_usb_bridge.py)
+- [`01_ENG2_Max_E2_PY_ros2_ready.py`](01_ENG2_Max_E2_PY_ros2_ready.py)
+- [`max_e2_cm550_ros2_usb_bridge.py`](max_e2_cm550_ros2_usb_bridge.py)
 
 Control de velocidad desde ROS:
 - publica `UInt16` en `/max/profile_velocity`
@@ -143,7 +145,7 @@ ros2 topic pub --once /max/head_cmd_raw std_msgs/msg/UInt16 "{data: 344}"
 ```
 
 Config:
-- [`head_ollo_bridge.yaml`](/Users/sebastian/Desarrollo/max/src/max_bringup/config/head_ollo_bridge.yaml)
+- [`head_ollo_bridge.yaml`](../src/max_bringup/config/head_ollo_bridge.yaml)
 
 Para que esto funcione, la `CM-550` tiene que estar ejecutando el script listo que usa `rc.read()`.
 
@@ -181,7 +183,7 @@ Esto hace:
 - mandar `turn_left`, `turn_right` o `stop` al cuerpo
 
 Config:
-- [`apriltag_head_search.yaml`](/Users/sebastian/Desarrollo/max/src/max_bringup/config/apriltag_head_search.yaml)
+- [`apriltag_head_search.yaml`](../src/max_bringup/config/apriltag_head_search.yaml)
 
 ## 8. Ajustes que casi seguro tendrás que tocar
 
@@ -194,7 +196,7 @@ Ajusta:
 - `preset_map`
 
 Archivo:
-- [`head_ollo_bridge.yaml`](/Users/sebastian/Desarrollo/max/src/max_bringup/config/head_ollo_bridge.yaml)
+- [`head_ollo_bridge.yaml`](../src/max_bringup/config/head_ollo_bridge.yaml)
 
 ### Cuerpo
 
@@ -204,7 +206,7 @@ Ajusta:
 - `sequence_step_delay_sec`
 
 Archivo:
-- [`cm550_motion_bridge_max_e2.yaml`](/Users/sebastian/Desarrollo/max/src/max_bringup/config/cm550_motion_bridge_max_e2.yaml)
+- [`cm550_motion_bridge_max_e2.yaml`](../src/max_bringup/config/cm550_motion_bridge_max_e2.yaml)
 
 ### Búsqueda con AprilTag
 
@@ -216,7 +218,7 @@ Ajusta:
 - `detection_timeout`
 
 Archivo:
-- [`apriltag_head_search.yaml`](/Users/sebastian/Desarrollo/max/src/max_bringup/config/apriltag_head_search.yaml)
+- [`apriltag_head_search.yaml`](../src/max_bringup/config/apriltag_head_search.yaml)
 
 ## 9. Limitaciones actuales
 

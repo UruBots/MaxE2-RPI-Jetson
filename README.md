@@ -1,6 +1,8 @@
-# MAX - SBC + CM-550 Object Tracking Robot
+# MAX-E2 — ROS 2 + CM-550 (Remocon)
 
-Proyecto para controlar un robot basado en ROBOTIS CM-550 y servos Dynamixel desde una Raspberry Pi 4B o NVIDIA Jetson Nano, usando una cámara y OpenCV para tracking de objetos en tiempo real.
+Proyecto para operar un robot **ROBOTIS MAX-E2** (CM-550) desde una **Raspberry Pi 4B** o **NVIDIA Jetson Nano**: visión por computadora en el SBC y **un único camino de actuación documentado: paquetes Remocon** (estilo RC-100) por USB/UART hacia la CM-550, consumidos en firmware con `rc.read()`.
+
+> **Alcance del proyecto:** la documentación y los flujos recomendados usan **solo** `cm550_remocon_bridge_node` para mover el cuerpo (motions), cabeza OLLO y LEDs. No se documenta aquí el control de ruedas vía DYNAMIXEL SDK/bypass ni el bus directo U2D2; parte del código histórico (`dynamixel_node`, launches `*_launch.py` sin `motion`) permanece en el repositorio pero **no forma parte del despliegue soportado**.
 
 ## Tabla de contenidos
 
@@ -10,7 +12,7 @@ Proyecto para controlar un robot basado en ROBOTIS CM-550 y servos Dynamixel des
   - [Método 1: USB (recomendado)](#método-1-usb-recomendado)
   - [Método 2: UART Serial (GPIO)](#método-2-uart-serial-gpio)
   - [Método 3: BLE inalámbrico](#método-3-ble-inalámbrico)
-- [Arquitecturas de control](#arquitecturas-de-control)
+- [Control por Remocon](#control-por-remocon)
 - [Instalación](#instalación)
   - [Raspberry Pi 4B](#raspberry-pi-4b)
   - [Jetson Nano](#jetson-nano)
@@ -18,8 +20,8 @@ Proyecto para controlar un robot basado en ROBOTIS CM-550 y servos Dynamixel des
   - [Conexión USB](#conexión-usb)
   - [Conexión UART (RPi)](#conexión-uart-rpi)
   - [Conexión UART (Jetson Nano)](#conexión-uart-jetson-nano)
-  - [Servos Dynamixel](#servos-dynamixel)
-- [Object Tracking](#object-tracking)
+  - [CM-550 y bus Dynamixel](#cm-550-y-bus-dynamixel)
+- [Visión y seguimiento (→ motions)](#visión-y-seguimiento--motions)
 - [Launchers (max_bringup)](src/max_bringup/doc/LAUNCHERS.md)
 - [Recursos](#recursos)
 
@@ -207,69 +209,26 @@ El CM-550 incluye un módulo BLE esclavo integrado. Se puede usar con:
 
 ---
 
-## Arquitecturas de control
+## Control por Remocon
 
-### Arquitectura A: SBC → CM-550 bypass → Servos (recomendada)
-
-El SBC envía paquetes DYNAMIXEL Protocol 2.0 por USB al CM-550, que los reenvía a los servos.
+El SBC envía paquetes remotos tipo **RC-100** por serial USB/UART al **CM-550**; el script MicroPython en la controladora los recibe con **`rc.read()`** y ejecuta motions, cabeza OLLO y LEDs según tu tarea.
 
 ```
-SBC (cámara + OpenCV + DYNAMIXEL SDK)
-    │ USB (micro USB)
-    ▼
-CM-550 (bypass mode, ID=200)
-    │ TTL 3-pin (6 puertos)
-    ▼
-Dynamixel servos (daisy-chain)
-```
-
-El CM-550 tiene un registro **Bypass Port** (address 20):
-- `0`: BLE
-- `1`: UART
-- `2`: USB
-
-**Ventajas:** no necesita hardware extra, el CM-550 alimenta los servos.
-
-### Arquitectura B: SBC → U2D2 → Servos (alternativa)
-
-Bypass completo del CM-550 usando un U2D2 (convertidor USB-a-TTL half-duplex, ~$30).
-
-```
-SBC (cámara + OpenCV + DYNAMIXEL SDK)
-    │ USB
-    ▼
-U2D2 + U2D2 Power Hub
-    │ TTL 3-pin
-    ▼
-Dynamixel servos (daisy-chain)
-```
-
-- El U2D2 aparece como `/dev/ttyUSB0` en ambas plataformas
-- **Ventajas:** control directo, probado y documentado. El usuario "newGUy" en el foro de ROBOTIS confirmó que *"U2D2 + Dynamixel SDK solved my whole problem"*.
-
-### Arquitectura C: SBC → CM-550 (Remocon packet real)
-
-El SBC envía paquetes remotos tipo `RC-100` por serial USB/UART al `CM-550`, y el
-script Python en la controladora los recibe con `rc.read()`.
-
-```
-SBC (cámara + OpenCV + ROS 2 + pySerial)
+SBC (ROS 2 + visión + pySerial)
     │ micro-USB o UART
     ▼
 cm550_remocon_bridge_node
-    │ paquete tipo RC-100
+    │ paquete Remocon
     ▼
-CM-550 (Play mode + rc.read())
-    │ TTL
+CM-550 (Play + script con rc.read())
+    │ TTL / OLLO
     ▼
-Dynamixel servos / OLLO / LEDs
+Cuerpo (motions) · servos · cabeza · LEDs
 ```
 
-Registros relevantes del controlador:
-- **Address 43** (`Remote Port`): `0 BLE`, `1 UART`, `2 USB plain cable`
+Registro habitual: **Address 43** (`Remote Port`): `0` BLE · `1` UART · `2` USB.
 
-**Ventajas:** mantiene activas `TASK`, `MicroPython` y `MOTION`, y permite reutilizar
-las motions pregrabadas del `ROBOTIS ENGINEER Kit`.
+Este modo mantiene activas **TASK**, **MicroPython** y **MOTION**, y reutiliza las motions `.mtn3` del kit **ROBOTIS ENGINEER**.
 
 Uso rápido:
 
@@ -374,16 +333,6 @@ Topics usados:
 Archivo de parámetros:
 - `src/max_bringup/config/apriltag_head_search.yaml`
 
-### Comparación
-
-| Criterio | A (CM-550 bypass) | B (U2D2) | C (Remocon) |
-|---|---|---|---|
-| Hardware extra | Ninguno | U2D2 (~$30) | Ninguno |
-| Control granular | Servo a servo | Servo a servo | Comandos de alto nivel |
-| Complejidad | Media | Baja | Alta (Task code) |
-| Latencia | Baja | Muy baja | Media |
-| Motions pregrabadas | No | No | Sí |
-
 ---
 
 ## Instalación
@@ -401,7 +350,7 @@ sudo apt-get install -y python3-pip python3-opencv libopencv-dev
 # Herramientas de desarrollo
 sudo apt-get install -y python3-dev python3-numpy
 
-# DYNAMIXEL SDK y pySerial
+# pySerial (puente remocon) y NumPy; dynamixel-sdk hace falta para compilar el workspace (nodos legacy en repo)
 pip3 install dynamixel-sdk pyserial numpy
 ```
 
@@ -427,7 +376,7 @@ python3 -c "import cv2; print('OpenCV', cv2.__version__); print('CUDA:', cv2.cud
 # Herramientas de desarrollo
 sudo apt-get install -y python3-pip python3-dev python3-serial
 
-# DYNAMIXEL SDK
+# Ver nota RPi: dynamixel-sdk solo requerido para build completo del repo
 pip3 install dynamixel-sdk pyserial numpy
 ```
 
@@ -546,77 +495,42 @@ sudo usermod -aG dialout $USER
 sudo chmod 666 /dev/ttyTHS1
 ```
 
-### Servos Dynamixel
+### CM-550 y bus Dynamixel
 
-Los servos deben estar en **Velocity Mode** (Operating Mode = 1) para control de ruedas, o **Position Mode** (Operating Mode = 3) para articulaciones.
+En el flujo **Remocon**, el bus TTL y los modos de los servos los gestiona el **firmware** de la CM-550 (motions, tareas). Desde ROS **no** se envían comandos DYNAMIXEL Protocol 2.0 en runtime.
 
-Verificar IDs de los servos con DYNAMIXEL Wizard 2.0 o con este script:
-
-```python
-from dynamixel_sdk import *
-
-# RPi: '/dev/ttyACM0' (USB) o '/dev/ttyAMA0' (UART)
-# Jetson: '/dev/ttyACM0' (USB) o '/dev/ttyTHS1' (UART)
-PORT = '/dev/ttyACM0'
-BAUDRATE = 1000000
-
-port_handler = PortHandler(PORT)
-packet_handler = PacketHandler(2.0)
-
-port_handler.openPort()
-port_handler.setBaudRate(BAUDRATE)
-
-for dxl_id in range(1, 20):
-    model_number, result, error = packet_handler.ping(port_handler, dxl_id)
-    if result == COMM_SUCCESS:
-        print(f"ID {dxl_id}: model {model_number}")
-
-port_handler.closePort()
-```
-
-#### Direcciones de la tabla de control (Dynamixel X-series)
-
-| Address | Nombre | Tamaño | Acceso | Descripción |
-|---|---|---|---|---|
-| 11 | Operating Mode | 1 byte | RW | 1: Velocity, 3: Position, 4: Extended Position |
-| 64 | Torque Enable | 1 byte | RW | 0: Off, 1: On |
-| 104 | Goal Velocity | 4 bytes | RW | Velocidad objetivo (velocity mode) |
-| 116 | Goal Position | 4 bytes | RW | Posición objetivo (position mode) |
-| 128 | Present Velocity | 4 bytes | R | Velocidad actual |
-| 132 | Present Position | 4 bytes | R | Posición actual |
+Para inspección o montaje mecánico puedes usar **DYNAMIXEL Wizard 2.0** u otras herramientas ROBOTIS fuera de este stack.
 
 ---
 
-## Object Tracking
+## Visión y seguimiento (→ motions)
 
 ### Concepto
 
 ```
-┌──────────────┐    USB     ┌─────────┐    TTL    ┌──────────┐
-│  SBC         │───────────▶│ CM-550  │──────────▶│ Dynamixel│
-│  (RPi/Jetson)│            │(bypass) │           │ Servos   │
-│  ┌────────┐  │            └─────────┘           └──────────┘
-│  │ Camera │  │
-│  └───┬────┘  │
+┌──────────────┐   topics    ┌─────────────────────┐   Remocon   ┌─────────┐
+│  SBC         │────────────▶│ cm550_remocon_bridge │───────────▶│ CM-550  │
+│  (RPi/Jetson)│  /max/motion│       _node          │  serial    │ + motion│
+│  ┌────────┐  │  _cmd …     └─────────────────────┘            └────┬────┘
+│  │ Camera │  │                                                     │ TTL
+│  └───┬────┘  │                                                     ▼
+│  OpenCV /    │                                              [cuerpo · ruedas]
+│  detección   │
 │      │       │
-│  OpenCV      │
-│  detect obj  │
-│      │       │
-│  compute     │
-│  velocity    │
-│      │       │
-│  DXL SDK ────┘
-│  send cmd    │
+│  tracker /   │
+│  línea / tag │
 └──────────────┘
 ```
+
+Los nodos de control (`tracker_node`, `line_tracker_node`, `action_executor_node`, …) pueden publicar en modo **`motion`** (`output_mode: motion`) para enviar **nombres de acción** o páginas hacia `/max/motion_cmd`, que el puente traduce a paquetes Remocon.
 
 ### Flujo del algoritmo
 
 1. **Captura**: leer frame de la cámara
-2. **Detección**: convertir a HSV, aplicar máscara de color, encontrar contornos (RPi/Jetson) o inferencia con TensorRT (Jetson)
-3. **Localización**: calcular centroide del contorno / bounding box más grande
-4. **Control**: calcular error respecto al centro del frame
-5. **Actuación**: enviar velocidades a los motores según el error
+2. **Detección**: HSV/contornos, AprilTag, línea, etc.
+3. **Localización**: centroide, error respecto al centro del frame, ID de tag, etc.
+4. **Control**: el nodo de control elige una **acción simbólica** o continúa el seguimiento
+5. **Actuación**: publicación a **`/max/motion_cmd`** (y topics de cabeza si aplica); el puente Remocon la entrega a la CM-550
 6. **Repetir**
 
 ### Estrategias de detección según plataforma
@@ -632,12 +546,11 @@ port_handler.closePort()
 
 | Variable | Descripción | Cómo calibrar |
 |---|---|---|
-| `LOWER_COLOR` / `UPPER_COLOR` | Rango HSV del objeto a trackear | Usar script de calibración HSV (ver abajo) |
-| `MIN_CONTOUR_AREA` | Área mínima para considerar un contorno válido | Ajustar según tamaño/distancia del objeto |
-| `DEAD_ZONE` | Zona central donde el robot no gira (pixels) | Mayor = más estable, menor = más reactivo |
-| `BASE_SPEED` | Velocidad de avance | Según velocidad deseada del robot |
-| `TURN_SPEED` | Intensidad del giro | Según agilidad deseada |
-| `DXL_ID_LEFT` / `DXL_ID_RIGHT` | IDs de los servos de tracción | Verificar con Dynamixel Wizard 2.0 |
+| `LOWER_COLOR` / `UPPER_COLOR` | Rango HSV del objeto a trackear | Script de calibración HSV (ver abajo) |
+| `MIN_CONTOUR_AREA` | Área mínima del contorno | Según tamaño/distancia del objeto |
+| `DEAD_ZONE` | Zona central sin giro (píxeles) | Más grande = más estable |
+| `command_map` / `command_sequences` | Nombre de acción → página(s) motion | `cm550_motion_bridge_max_e2.yaml` alineado con tus `.mtn3` |
+| `output_mode` | `motion` vs velocidad Twist | En trackers: usar `motion` para Remocon |
 
 ### Script de calibración HSV
 
@@ -724,7 +637,6 @@ cv2.destroyAllWindows()
 - [CM-550 MicroPython API](https://emanual.robotis.com/docs/en/edu/pycm/)
 - [DYNAMIXEL SDK - Python en Linux](https://emanual.robotis.com/docs/en/software/dynamixel/dynamixel_sdk/library_setup/python_linux/)
 - [DYNAMIXEL Protocol 2.0](https://emanual.robotis.com/docs/en/dxl/protocol2/)
-- [U2D2](https://emanual.robotis.com/docs/en/parts/interface/u2d2/)
 
 ### Documentación Jetson Nano
 
@@ -741,11 +653,10 @@ cv2.destroyAllWindows()
 - [Foro ROBOTIS - Comunicación C++ con CM-550](https://forum.robotis.com/t/communicate-with-cm550-over-c/1770)
 - [DynamixelSDK GitHub Issues](https://github.com/ROBOTIS-GIT/DynamixelSDK/issues)
 - [NVIDIA Developer Forums - Jetson Nano](https://forums.developer.nvidia.com/c/agx-autonomous-machines/jetson-embedded-systems/jetson-nano/76)
-- [jetsonDynamixel - Control directo por UART](https://github.com/Maik93/jetsonDynamixel)
 
 ### Guías locales
 
-- [`docs/INTEGRATION_MAX_E2.md`](/Users/sebastian/Desarrollo/max/docs/INTEGRATION_MAX_E2.md) - orden recomendado de carga y pruebas para `MAX-E2 + CM-550 + ROS 2`
+- [`docs/INTEGRATION_MAX_E2.md`](docs/INTEGRATION_MAX_E2.md) — integración MAX-E2 + CM-550 + ROS 2
 
 ### Libros
 
@@ -761,7 +672,7 @@ cv2.destroyAllWindows()
 
 ## Paquetes ROS2
 
-El proyecto está estructurado como un workspace ROS2 con 5 paquetes:
+El workspace agrupa **cinco paquetes**. La actuación documentada pasa por **`cm550_remocon_bridge_node`**; los nodos que publican `/cmd_vel` hacia `dynamixel_node` se mantienen como legado en el código.
 
 ```
 max/                          # Workspace root
@@ -770,28 +681,29 @@ max/                          # Workspace root
     ├── max_interfaces/       # Mensajes y servicios custom (CMake)
     ├── max_vision/           # Captura de cámara + detección (Python)
     ├── max_control/          # Controlador de tracking (Python)
-    ├── max_driver/           # Driver Dynamixel/CM-550 (Python)
+    ├── max_driver/           # Puente Remocon CM-550 + nodos legacy (Python)
     └── max_bringup/          # Launch files y configuración (Python)
 ```
 
-### Arquitectura de nodos y topics
+### Arquitectura de nodos y topics (stack Remocon)
 
 ```
-                                   /max/camera/image_raw
-                                   (sensor_msgs/Image)
-                                          │
-┌──────────────┐  /max/detection  ┌───────┴──────┐  /cmd_vel   ┌────────────────┐
-│ detector_node├─────────────────►│ tracker_node ├────────────►│ dynamixel_node │
-│ (max_vision) │  (Detection)     │(max_control) │  (Twist)    │  (max_driver)  │
-└──────┬───────┘                  └──────────────┘             └───────┬────────┘
-       │                                                               │
-       │ /max/debug_image                                    ┌─────────┴─────────┐
-       │ (sensor_msgs/Image)                                 │  CM-550 / U2D2    │
-       │                                                     │  (serial USB/UART)│
-  [Camera]                                                   └─────────┬─────────┘
-                                                                       │ TTL
-                                                               [Dynamixel Servos]
+  /max/camera/image_raw                    /max/motion_cmd …
+         │                                        │
+┌────────┴────────┐   detección / línea / tag   ┌──┴──────────────────────────┐
+│  max_vision     │ ───────────────────────────►│ max_control                    │
+│  detector_* …   │                             │ tracker / line_tracker /       │
+└────────┬────────┘                             │ action_executor …             │
+         │                                     └──┬──────────────────────────┘
+         │  (output_mode: motion)                  │  std_msgs/String → motion
+         │                                        ▼
+         │                               ┌─────────────────────┐
+         └────────────────────────────►│cm550_remocon_bridge │
+              /max/debug_image          │      _node          │──USB/UART──► CM-550
+                                        └─────────────────────┘
 ```
+
+Si un nodo publica **`/cmd_vel`** en lugar de motions, hace falta el camino legacy **`dynamixel_node`** (no incluido en el despliegue Remocon documentado aquí).
 
 ### max_interfaces
 
@@ -870,208 +782,116 @@ Mensajes y servicios custom:
 
 ### max_driver
 
-**Nodos:**
+**Nodo principal (despliegue Remocon):**
 
-- **`dynamixel_node`** - Interfaz con servos Dynamixel vía CM-550
-  - Suscribe: `/cmd_vel`
-  - Publica: `/max/dynamixel_states`
-  - Servicios: `/max/set_torque`, `/max/set_operating_mode`
-  - Cinemática diferencial: Twist → velocidades de rueda izquierda/derecha
-  - Graceful degradation: puede correr sin hardware (para testing)
+- **`cm550_remocon_bridge_node`** — ROS 2 → paquetes **Remocon** hacia la CM-550 (`rc.read()` en firmware).
+  - Entradas típicas: `/max/motion_cmd`, `/max/motion_page_cmd`, `/max/head_*`, `/max/led_*`
+  - Salidas de estado: `/max/motion_status`, `/max/motion_last_page`, etc.
+  - Un solo puerto serie (USB o UART) para cuerpo, cabeza OLLO y LEDs.
 
-- **`engineer_joint_node`** - Control multi-articular para humanoides **ROBOTIS Engineer** (p. ej. **MAX-E2**) y otros brazos/piernas con XL430/2XL430
-  - Suscribe: `/max/joint_command` (`sensor_msgs/JointState`, usa el campo **`position`** como objetivo)
-  - Publica: `/joint_states` (`sensor_msgs/JointState` con posición/velocidad leídas del bus)
-  - Servicios: `/max/engineer/set_torque`, `/max/engineer/set_operating_mode`
-  - Por defecto: modo **Position** (3), torque ON, conversión **radianes ↔ ticks** (4096/rev)
-  - **No** ejecutes a la vez `dynamixel_node` y `engineer_joint_node` sobre el mismo CM-550 (conflicto de bus / comandos).
-  - Debes alinear **`joint_ids`** y **`joint_names`** con tu ensamblaje (Dynamixel Wizard 2.0); la plantilla está en `config/engineer_max_e2.yaml`.
+**Nodos legacy (siguen en el repo; no son el flujo documentado):**
 
-- **`cm550_remocon_bridge_node`** - Puente unificado ROS 2 → `Remocon packet` real hacia la `CM-550`
-  - Suscribe: `/max/motion_cmd`, `/max/motion_page_cmd`, `/max/head_cmd_raw`, `/max/head_cmd`, `/max/head_preset`, `/max/led_preset`, `/max/led_cmd_raw`
-  - Publica: `/max/motion_status`, `/max/motion_last_page`, `/max/head_cmd_sent`, `/max/led_cmd_sent`
-  - Envía paquetes tipo `RC-100` por serial USB/UART, para que la `CM-550` los reciba con `rc.read()`
-  - Unifica cuerpo, cabeza OLLO y LEDs en un solo acceso al puerto serial
-  - Pensado para reutilizar las motions `.mtn3` oficiales del `MAX-E2` sin usar `dynamixel_sdk` como transporte de runtime
+- **`dynamixel_node`** — `/cmd_vel` → ruedas por protocolo DYNAMIXEL (sin Remocon).
+- **`engineer_joint_node`** — articulaciones por `/max/joint_command` (no usar junto a `dynamixel_node` en el mismo bus).
 
 ### max_bringup
 
-Índice de **todos** los launchers (acción, nodos y notas): [`src/max_bringup/doc/LAUNCHERS.md`](src/max_bringup/doc/LAUNCHERS.md).
+Índice detallado: [`src/max_bringup/doc/LAUNCHERS.md`](src/max_bringup/doc/LAUNCHERS.md).
 
-**Launch files:**
+**Remocon (uso soportado):**
 
-- **`max_launch.py`** - Tracking por color (detector + tracker + dynamixel + debug_view)
-- **`shape_track_launch.py`** - Tracking por formas (shape_detector + tracker + dynamixel + debug_view)
-- **`line_follow_launch.py`** - Seguimiento de línea (line_detector + line_tracker + dynamixel + debug_view)
-- **`apriltag_action_launch.py`** - Acciones por AprilTag (apriltag_detector + action_executor + dynamixel + debug_view)
-- **`shape_track_motion_launch.py`** - Tracking por formas usando motions del `MAX-E2` vía `CM-550`
-- **`line_follow_motion_launch.py`** - Seguimiento de línea usando motions del `MAX-E2` vía `CM-550`
-- **`apriltag_action_motion_launch.py`** - Acciones por AprilTag usando motions del `MAX-E2` vía `CM-550`
-- **`teleop_launch.py`** - Teleoperación por teclado (`teleop_twist_keyboard` + `dynamixel_node`)
-- **`engineer_joint_launch.py`** - Solo control articulaciones Engineer / MAX-E2 (`engineer_joint_node`)
-- **`engineer_joints_teleop_launch.py`** - `engineer_joint_node` + `joint_teleop_node` (mismo `engineer_max_e2.yaml`)
-- **`cm550_motion_bridge_launch.py`** - Puente unificado ROS 2 → `Remocon packet` → `CM-550`
-- **`head_ollo_bridge_launch.py`** - Prueba aislada de cabeza OLLO usando el puente unificado
-- **`apriltag_head_search_launch.py`** - Detector de AprilTag + barrido de cabeza + recentrado de cuerpo
-- **`vision_only_launch.py`** - Solo visión y control (sin hardware, para testing)
+- **`cm550_motion_bridge_launch.py`** — solo puente → CM-550
+- **`preflight_launch.py`** — comprobar cámara y puerto antes de arrancar
+- **`motion_mux_launch.py`** — una fuente activa entre `/max/motion_cmd_teleop`, `…_tracker`, etc.
+- **`teleop_cm550_launch.py`** — teclado → `/cmd_vel` → `twist_to_motion_node` → `/max/motion_cmd_teleop` → puente (usar `teleop_prefix:='xterm -hold -e '` si falla termios)
+- **`line_follow_motion_launch.py`**, **`shape_track_motion_launch.py`**, **`apriltag_action_motion_launch.py`** — visión + acciones como **motions**
+- **`apriltag_head_search_launch.py`** — AprilTag + cabeza + cuerpo por Remocon
+- **`head_ollo_bridge_launch.py`**, **`led_ollo_bridge_launch.py`** — cabeza / LEDs vía el mismo puente
 
-**Configuración:**
+**Legacy (no documentados como despliegue actual; `dynamixel_node` + `/cmd_vel`):**
 
-- **`config/max_params.yaml`** - Parámetros para RPi 4B
-- **`config/max_params_jetson.yaml`** - Parámetros para Jetson Nano (incluye GStreamer pipeline)
-- **`config/engineer_max_e2.yaml`** - Plantilla `joint_ids` / `joint_names` para humanoide Engineer (ajustar a tu robot)
-- **`config/max_params_motion.yaml`** - Parámetros para visión/control publicando acciones a `/max/motion_cmd`
-- **`config/cm550_motion_bridge_max_e2.yaml`** - Parámetros del puente serial unificado y mapeo de motions/cabeza/LED
-- **`config/head_ollo_bridge.yaml`** - Rango y presets para la cabeza OLLO/servo auxiliar
-- **`config/apriltag_head_search.yaml`** - Parámetros del barrido de cabeza y recentrado con AprilTag
+- `max_launch.py`, `line_follow_launch.py`, `shape_track_launch.py`, `apriltag_action_launch.py`, `teleop_launch.py`, `vision_only_launch.py`
 
-#### Teleoperación (teclado)
+**Opcional (articulaciones por DYNAMIXEL, no Remocon):**
 
-`dynamixel_node` ya escucha `/cmd_vel`. El paquete estándar `teleop_twist_keyboard` publica en ese mismo topic, así que basta con lanzar:
+- `engineer_joint_launch.py`, `engineer_joints_teleop_launch.py`
+
+**Configuración principal:**
+
+- **`config/cm550_motion_bridge_max_e2.yaml`** — puente serial y `command_map`
+- **`config/max_params_motion.yaml`** — visión + `output_mode: motion` hacia `/max/motion_cmd`
+- **`config/max_params.yaml`** / **`max_params_jetson.yaml`** — cámara (Jetson: pipeline GStreamer en el YAML)
+- **`config/apriltag_head_search.yaml`**, **`head_ollo_bridge.yaml`**, **`led_ollo_bridge.yaml`**
+
+#### Teleoperación (teclado → motions)
+
+Flujo recomendado:
 
 ```bash
-ros2 launch max_bringup teleop_launch.py
+ros2 launch max_bringup teleop_cm550_launch.py teleop_prefix:='xterm -hold -e '
 ```
 
-Velocidades iniciales en YAML (`teleop_twist_keyboard`: `speed`, `turn`). En el nodo puedes ajustar con **q/z** (±10% todo), **w/x** (solo lineal), **e/c** (solo angular). Layout típico: **i** avanza, **,** retrocede, **j**/**l** giran, **k** para.
+`twist_to_motion_node` traduce `/cmd_vel` a comandos discretos en `/max/motion_cmd_teleop`; el puente los envía por Remocon. No mezcles fuentes de motion sin `motion_mux_node` o reglas claras.
 
-**Importante:** no ejecutes a la vez `teleop_launch` y nodos autónomos (`tracker_node`, `line_tracker_node`, `action_executor_node`): se pisan en `/cmd_vel`. Para mezclar manual + autónomo habría que usar algo como `twist_mux` y topics distintos (`cmd_vel_teleop`, `cmd_vel_nav`).
+#### Articulaciones Engineer (opcional, fuera de Remocon)
 
-Para mando (joystick), instala `ros-humble-teleop-twist-joy`, configura un `joy_node` y remapea su salida a `/cmd_vel` (o al topic que use un mux).
-
-#### Control ROS2 del humanoide Engineer (MAX-E2)
-
-```bash
-# Tras calibrar IDs/nombres en config/engineer_max_e2.yaml
-ros2 launch max_bringup engineer_joint_launch.py
-
-# En otra terminal: teleop por teclado (publica JointState en /max/joint_command)
-ros2 run max_control joint_teleop_node --ros-args \
-  --params-file $(ros2 pkg prefix max_bringup)/share/max_bringup/config/engineer_max_e2.yaml
-
-# O driver + teleop en un solo launch (misma TTY: el teclado va al teleop)
-ros2 launch max_bringup engineer_joints_teleop_launch.py
-
-# Ver estado de articulaciones
-ros2 topic echo /joint_states
-
-# Enviar objetivo (ejemplo: un solo joint; nombres deben coincidir con el YAML)
-ros2 topic pub --once /max/joint_command sensor_msgs/msg/JointState \
-  "{name: ['l_knee'], position: [0.5], velocity: [], effort: []}"
-```
-
-**`joint_teleop_node`** (teclas `[` `]` cambiar articulación, `=` / `-` paso en rad, `0` cero, `g` copiar desde `/joint_states`, `h` ayuda, `q` salir). Requiere **terminal interactivo** (TTY). Con `joint_names: []` en el YAML, toma nombres y pose inicial del primer `/joint_states` que publica `engineer_joint_node`.
-
-Para teleop más avanzado: **RViz**, **MoveIt 2**, **joint_trajectory_controller**. El driver `engineer_joint_node` es la capa **hardware → ROS**.
+Si necesitas `engineer_joint_node` + `joint_teleop_node`, ver comentarios en [`LAUNCHERS.md`](src/max_bringup/doc/LAUNCHERS.md); no es el camino Remocon del cuerpo.
 
 ### Build y ejecución
 
 ```bash
-# Prerequisitos
+# Prerrequisitos ROS
 sudo apt install ros-humble-cv-bridge ros-humble-image-transport ros-humble-teleop-twist-keyboard
 pip3 install dynamixel-sdk pupil-apriltags
 
-# Build
-cd /path/to/max
+cd /ruta/al/workspace
 colcon build --symlink-install
 source install/setup.bash
 
-# Lanzar tracking por color (RPi)
-ros2 launch max_bringup max_launch.py
-
-# Lanzar seguimiento de línea
-ros2 launch max_bringup line_follow_launch.py
-
-# Lanzar tracking por formas
-ros2 launch max_bringup shape_track_launch.py
-
-# Lanzar tracking por formas usando motions de la CM-550
-ros2 launch max_bringup shape_track_motion_launch.py
-
-# Lanzar acciones por AprilTag
-ros2 launch max_bringup apriltag_action_launch.py
-
-# Lanzar acciones por AprilTag usando motions de la CM-550
-ros2 launch max_bringup apriltag_action_motion_launch.py
-
-# Lanzar seguimiento de linea usando motions de la CM-550
-ros2 launch max_bringup line_follow_motion_launch.py
-
-# Lanzar con config Jetson Nano
-ros2 launch max_bringup apriltag_action_launch.py \
-  config_file:=$(ros2 pkg prefix max_bringup)/share/max_bringup/config/max_params_jetson.yaml
-
-# Solo visión (sin hardware)
-ros2 launch max_bringup vision_only_launch.py
-
-# Teleoperación manual (teclado → /cmd_vel → ruedas)
-# No combines con tracker/line_tracker/action_executor: todos publican /cmd_vel.
-ros2 launch max_bringup teleop_launch.py
-
-# Humanoide Engineer / MAX-E2 (articulaciones → /max/joint_command)
-ros2 launch max_bringup engineer_joint_launch.py
-
-# Motions del MAX-E2 ya cargadas en la CM-550
+# --- Flujo Remocon (recomendado) ---
 ros2 launch max_bringup cm550_motion_bridge_launch.py
 
-# Cabeza OLLO / servo auxiliar
-ros2 launch max_bringup head_ollo_bridge_launch.py
+ros2 launch max_bringup preflight_launch.py
 
-# Barrido de cabeza + recentrado con AprilTag
+ros2 launch max_bringup teleop_cm550_launch.py teleop_prefix:='xterm -hold -e '
+
+ros2 launch max_bringup line_follow_motion_launch.py
+ros2 launch max_bringup shape_track_motion_launch.py
+ros2 launch max_bringup apriltag_action_motion_launch.py
+
 ros2 launch max_bringup apriltag_head_search_launch.py
+ros2 launch max_bringup head_ollo_bridge_launch.py
+ros2 launch max_bringup led_ollo_bridge_launch.py
 
-# Nodos individuales
-ros2 run max_vision detector_node
-ros2 run max_vision apriltag_detector_node
-ros2 run max_vision hsv_calibrator
-ros2 run max_control tracker_node
-ros2 run max_control action_executor_node
-ros2 run max_control apriltag_head_search_node
-ros2 run max_control joint_teleop_node
-ros2 run max_driver dynamixel_node --ros-args -p port:=/dev/ttyACM0
-ros2 run max_driver engineer_joint_node --ros-args \
-  --params-file $(ros2 pkg prefix max_bringup)/share/max_bringup/config/engineer_max_e2.yaml
+# Jetson: misma launch con YAML de cámara CSI
+ros2 launch max_bringup apriltag_action_motion_launch.py \
+  config_file:=$(ros2 pkg prefix max_bringup)/share/max_bringup/config/max_params_jetson.yaml
+
+# Puente solo (prueba manual)
 ros2 run max_driver cm550_remocon_bridge_node --ros-args \
   --params-file $(ros2 pkg prefix max_bringup)/share/max_bringup/config/cm550_motion_bridge_max_e2.yaml
-ros2 run max_driver cm550_remocon_bridge_node --ros-args \
-  --params-file $(ros2 pkg prefix max_bringup)/share/max_bringup/config/head_ollo_bridge.yaml
-ros2 run teleop_twist_keyboard teleop_twist_keyboard
 
-# Visualizar debug view
+# Depuración de imagen
 ros2 run rqt_image_view rqt_image_view /max/debug_view
 ```
 
-### Debugging con ROS2
+Comandos **legacy** (`max_launch.py`, `teleop_launch.py`, `dynamixel_node`, …) siguen en el árbol de fuentes pero no se listan como despliegue actual.
+
+### Depuración (ROS 2, Remocon)
 
 ```bash
-# Ver topics activos
 ros2 topic list
 
-# Monitorear detecciones
+ros2 topic echo /max/motion_cmd
 ros2 topic echo /max/detection
-
-# Monitorear comandos de velocidad
-ros2 topic echo /cmd_vel
-
-# Ver estado de servos
-ros2 topic echo /max/dynamixel_states
-
-# Monitorear AprilTags
 ros2 topic echo /max/apriltag_detections
-
-# Monitorear acción actual
 ros2 topic echo /max/current_action
 
-# Cambiar parámetros en runtime
+# Publicar una motion por nombre (debe existir en command_map)
+ros2 topic pub --once /max/motion_cmd std_msgs/msg/String "{data: walk}"
+
 ros2 param set /detector_node lower_h 100
-ros2 param set /tracker_node linear_speed 0.2
-ros2 param set /action_executor_node tag_action_map '0:follow,1:sprint,2:dance'
-
-# Enviar cmd_vel manual (testing)
-ros2 topic pub /cmd_vel geometry_msgs/msg/Twist \
-  "{linear: {x: 0.1}, angular: {z: 0.0}}"
-
-# Llamar servicios
-ros2 service call /max/set_torque max_interfaces/srv/SetTorque \
-  "{id: 1, enable: true}"
+ros2 param set /action_executor_node tag_action_map '0:follow,1:stop,2:spin_left'
 ```
+
+Para pruebas con stack legacy que usan **`/cmd_vel`**, ver código y comentarios en los launches `*_launch.py` sin `motion`.

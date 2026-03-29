@@ -3,7 +3,7 @@
 <package format="3">
   <name>max_bringup</name>
   <version>0.1.0</version>
-  <description>Launch files and configuration for MAX robot</description>
+  <description>Bring-up ROS 2 for MAX-E2: visión y control vía Remocon (CM-550). Launches legacy con dynamixel_node permanecen en el paquete sin ser el flujo documentado.</description>
   <maintainer email="sebastian@todo.com">sebastian</maintainer>
   <license>Apache-2.0</license>
 
@@ -17,6 +17,7 @@
   <exec_depend>launch_ros</exec_depend>
   <exec_depend>ament_index_python</exec_depend>
   <exec_depend>teleop_twist_keyboard</exec_depend>
+  <exec_depend>image_view</exec_depend>
   <export>
   <build_type>ament_python</build_type>
 </export>
