@@ -332,7 +332,7 @@ Notas:
   ros2 launch max_bringup motion_mux_launch.py active_source:=teleop   # o tracker | apriltag | line
   ```
   Publica en `/max/motion_cmd` solo lo que venga de `/max/motion_cmd_<source>`.
-- Los launch de teleop ya publican en `/max/motion_cmd_teleop`; remapea tus trackers para usar `/max/motion_cmd_tracker` (line) o `/max/motion_cmd_apriltag` según corresponda.
+- `teleop_cm550_launch.py` publica directamente en `/max/motion_cmd` (teleop solo, sin mux). Con mux activo, configura cada fuente en `/max/motion_cmd_teleop`, `/max/motion_cmd_tracker`, etc.
 
 ### Motions personalizadas (run/down/etc.)
 - Añade las páginas a `command_map` y `command_sequences` en `cm550_motion_bridge_max_e2.yaml` o `max_params_motion.yaml`. Ejemplo:

@@ -23,6 +23,7 @@ Proyecto para operar un robot **ROBOTIS MAX-E2** (CM-550) desde una **Raspberry 
   - [CM-550 y bus Dynamixel](#cm-550-y-bus-dynamixel)
 - [Visión y seguimiento (→ motions)](#visión-y-seguimiento--motions)
 - [Launchers (max_bringup)](src/max_bringup/doc/LAUNCHERS.md)
+- [Teleop CM-550 por SSH / TTY](src/max_bringup/doc/TELEOP_SSH.md)
 - [Recursos](#recursos)
 
 ---
@@ -796,14 +797,14 @@ Mensajes y servicios custom:
 
 ### max_bringup
 
-Índice detallado: [`src/max_bringup/doc/LAUNCHERS.md`](src/max_bringup/doc/LAUNCHERS.md).
+Índice detallado: [`src/max_bringup/doc/LAUNCHERS.md`](src/max_bringup/doc/LAUNCHERS.md). Teleop remoto (SSH, `DISPLAY`, `include_teleop`): [`src/max_bringup/doc/TELEOP_SSH.md`](src/max_bringup/doc/TELEOP_SSH.md).
 
 **Remocon (uso soportado):**
 
 - **`cm550_motion_bridge_launch.py`** — solo puente → CM-550
 - **`preflight_launch.py`** — comprobar cámara y puerto antes de arrancar
 - **`motion_mux_launch.py`** — una fuente activa entre `/max/motion_cmd_teleop`, `…_tracker`, etc.
-- **`teleop_cm550_launch.py`** — teclado → `/cmd_vel` → `twist_to_motion_node` → `/max/motion_cmd_teleop` → puente (usar `teleop_prefix:='xterm -hold -e '` si falla termios)
+- **`teleop_cm550_launch.py`** — teclado → `/cmd_vel` → `twist_to_motion_node` → `/max/motion_cmd` → puente; por SSH ver [TELEOP_SSH.md](src/max_bringup/doc/TELEOP_SSH.md)
 - **`line_follow_motion_launch.py`**, **`shape_track_motion_launch.py`**, **`apriltag_action_motion_launch.py`** — visión + acciones como **motions**
 - **`apriltag_head_search_launch.py`** — AprilTag + cabeza + cuerpo por Remocon
 - **`head_ollo_bridge_launch.py`**, **`led_ollo_bridge_launch.py`** — cabeza / LEDs vía el mismo puente
@@ -825,13 +826,15 @@ Mensajes y servicios custom:
 
 #### Teleoperación (teclado → motions)
 
-Flujo recomendado:
+Escritorio local o `ssh -X`:
 
 ```bash
 ros2 launch max_bringup teleop_cm550_launch.py teleop_prefix:='xterm -hold -e '
 ```
 
-`twist_to_motion_node` traduce `/cmd_vel` a comandos discretos en `/max/motion_cmd_teleop`; el puente los envía por Remocon. No mezcles fuentes de motion sin `motion_mux_node` o reglas claras.
+Solo SSH sin ventanas gráficas: [`src/max_bringup/doc/TELEOP_SSH.md`](src/max_bringup/doc/TELEOP_SSH.md) (`include_teleop:=false` + `ssh -t` para `teleop_twist_keyboard`).
+
+`twist_to_motion_node` publica en `/max/motion_cmd` (igual que escucha `cm550_remocon_bridge_node`). Para varias fuentes (teleop + visión), usa `motion_mux_launch` y topics `/max/motion_cmd_teleop`, etc., según el mux.
 
 #### Articulaciones Engineer (opcional, fuera de Remocon)
 
@@ -854,6 +857,7 @@ ros2 launch max_bringup cm550_motion_bridge_launch.py
 ros2 launch max_bringup preflight_launch.py
 
 ros2 launch max_bringup teleop_cm550_launch.py teleop_prefix:='xterm -hold -e '
+# SSH headless: ver share/max_bringup/doc/TELEOP_SSH.md
 
 ros2 launch max_bringup line_follow_motion_launch.py
 ros2 launch max_bringup shape_track_motion_launch.py

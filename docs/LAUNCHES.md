@@ -3,7 +3,7 @@
 | Tarea | Comando | YAML por defecto | Publica a /max/motion_cmd | Notas |
 |-------|---------|------------------|---------------------------|-------|
 | Preflight HW (cámara + serial) | `ros2 launch max_bringup preflight_launch.py` | `cm550_motion_bridge_max_e2.yaml` | No | Solo chequea y termina |
-| Teleop teclado → CM-550 | `ros2 launch max_bringup teleop_cm550_launch.py` | `cm550_motion_bridge_max_e2.yaml` | Sí (vía `twist_to_motion_node`) | Publica en `/max/motion_cmd_teleop` para usar con el mux |
+| Teleop teclado → CM-550 | `ros2 launch max_bringup teleop_cm550_launch.py` | `cm550_motion_bridge_max_e2.yaml` | Sí (vía `twist_to_motion_node`) | Publica en `/max/motion_cmd` (directo al puente). Con mux, cada fuente usa `/max/motion_cmd_<source>` |
 | AprilTag (barrido+centro+caminar) | `ros2 launch max_bringup apriltag_head_search_launch.py` | `apriltag_head_search.yaml` | Sí | Evitar que corra teleop simultáneo |
 | Línea con motions | `ros2 launch max_bringup line_follow_motion_launch.py` | `max_params_motion.yaml` | Sí | Usa `line_detector_node` + `line_tracker_node` |
 | Pelota/objeto por color | `ros2 launch max_bringup shape_track_motion_launch.py` | `max_params_motion.yaml` | Sí | Configura `color_preset` en detector/shape_detector |

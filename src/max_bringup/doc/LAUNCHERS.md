@@ -2,6 +2,8 @@
 
 Este proyecto se usa **por Remocon** (`cm550_remocon_bridge_node` → CM-550). La tabla prioriza ese flujo; los launches que arrancan `dynamixel_node` y `/cmd_vel` se listan como **legacy**.
 
+**Teleop por SSH / TTY / xterm:** guía detallada en [TELEOP_SSH.md](TELEOP_SSH.md) (`include_teleop:=false`, `DISPLAY`, `ssh -X`, `ssh -t`).
+
 ## Stack Remocon (soportado)
 
 | Launcher | Acción principal | Nodos / notas |
@@ -9,7 +11,7 @@ Este proyecto se usa **por Remocon** (`cm550_remocon_bridge_node` → CM-550). L
 | `preflight_launch.py` | Comprobar cámara y puerto serial | `preflight_check_node`. YAML típico: `cm550_motion_bridge_max_e2.yaml`. |
 | `cm550_motion_bridge_launch.py` | Solo puente ROS → paquetes Remocon → CM-550 | `cm550_remocon_bridge_node` + `cm550_motion_bridge_max_e2.yaml`. |
 | `motion_mux_launch.py` | Una fuente activa hacia `/max/motion_cmd` | `motion_mux_node`: `active_source` = `teleop` \| `tracker` \| `apriltag` \| `line`. |
-| `teleop_cm550_launch.py` | Teclado → `/cmd_vel` → motions discretas → Remocon | `teleop_twist_keyboard`, `twist_to_motion_node` → `/max/motion_cmd_teleop`, `cm550_remocon_bridge_node`. Por **SSH sin escritorio**: `include_teleop:=false` y en otra sesión `ssh -t` ejecuta `teleop_twist_keyboard` con el mismo YAML. Con escritorio: `teleop_prefix:='xterm -hold -e '` o `gnome-terminal -- ` (requiere `DISPLAY`; `ssh -X` si el teleop va en tu PC). |
+| `teleop_cm550_launch.py` | Teclado → `/cmd_vel` → motions → Remocon | `teleop_twist_keyboard`, `twist_to_motion_node` → `/max/motion_cmd` (mismo topic que el puente), `cm550_remocon_bridge_node`. Si mezclas con tracker/línea, usa `motion_mux_launch` y entonces publica cada fuente en `/max/motion_cmd_*` según mux. Por **SSH**: `include_teleop:=false` + `ssh -t` para el teclado; `teleop_prefix` con `DISPLAY`. |
 | `line_follow_motion_launch.py` | Línea → acciones **motion** | `line_detector_node`, `line_tracker_node` (motion), `cm550_remocon_bridge_node`, `debug_view_node`. `max_params_motion.yaml`. |
 | `shape_track_motion_launch.py` | Forma/color → motions | `shape_detector_node`, `tracker_node`, `cm550_remocon_bridge_node`, `debug_view_node`. `max_params_motion.yaml`. |
 | `apriltag_action_motion_launch.py` | AprilTag → acciones **motion** | `apriltag_detector_node`, `action_executor_node`, `cm550_remocon_bridge_node`, `debug_view_node`. `max_params_motion.yaml`. |

@@ -36,11 +36,13 @@ def _launch_setup(context, *args, **kwargs):
 
     teleop = Node(**teleop_kwargs)
 
+    # motion_topic desde YAML (p. ej. /max/motion_cmd). No usar /max/motion_cmd_teleop
+    # aquí sin motion_mux_node: el puente solo escucha command_topic (/max/motion_cmd).
     twist_mapper = Node(
         package='max_control',
         executable='twist_to_motion_node',
         name='twist_to_motion_node',
-        parameters=[config_path, {'motion_topic': '/max/motion_cmd_teleop'}],
+        parameters=[config_path],
         output='screen',
     )
 
