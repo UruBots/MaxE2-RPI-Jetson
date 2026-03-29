@@ -9,7 +9,9 @@ from pycm import *
 #   20001                 -> LED RED
 #   20002                 -> LED BLUE
 #   20003                 -> LED MAGENTA
-#   30000 + head_raw      -> cabeza OLLO raw (0..1023), con clamp
+#   30000 + head_raw      -> OLLO(1) OLLO_JOINT_POSITION (0..1023), mismo criterio que
+#                            01_ENG2_Max_E2_PY_ros2_ready.py + cm550_remocon_bridge_node:
+#                            center=512, left=680, right=344 (preset_map YAML)
 #   40000                 -> postura lista (ready / stand)
 #   40001                 -> postura agachada / fight-ready
 #   40002                 -> torque ON
@@ -41,6 +43,11 @@ ROS_HEAD_BASE = 30000
 ROS_HEAD_MIN = ROS_HEAD_BASE
 ROS_HEAD_MAX = ROS_HEAD_BASE + 1023
 
+# Misma convención que docs/01_ENG2_Max_E2_PY_ros2_ready.py y max_bringup preset_map.
+ROS_HEAD_CENTER = 512
+ROS_HEAD_LEFT = 680
+ROS_HEAD_RIGHT = 344
+
 ROS_CMD_READY = 40000
 ROS_CMD_FIGHT_READY = 40001
 ROS_CMD_TORQUE_ON = 40002
@@ -48,12 +55,12 @@ ROS_CMD_TORQUE_OFF = 40003
 ROS_CMD_STOP = 40004
 ROS_VEL_BASE = 50000
 
-# Ajuste fino de rango de cabeza para no forzar mecánica
+# Ajuste fino de rango de cabeza (mismo clamp que 01_ENG2_Max_E2_PY_ros2_ready.py)
 ROS_HEAD_CLAMP_MIN = 280
 ROS_HEAD_CLAMP_MAX = 760
-# Centro nominal de cabeza dentro del rango clamp.
-# Ajusta este valor si mecánicamente tu horn no queda al centro.
-ROS_HEAD_CENTER = int((ROS_HEAD_CLAMP_MIN + ROS_HEAD_CLAMP_MAX) / 2)
+
+# Si el horn mecánico no coincide con 512 en reposo, ajusta aquí (se suma a todo raw).
+HEAD_MECHANICAL_OFFSET = 0
 
 nMotion_Ready = -1
 
@@ -150,7 +157,8 @@ def Motion_Ready(nInit = 1):
     nMotion_Ready = nInit
 
 def SetHeadRaw(nHead):
-    nHead = Clamp(int(nHead), ROS_HEAD_CLAMP_MIN, ROS_HEAD_CLAMP_MAX)
+    nHead = int(nHead) + HEAD_MECHANICAL_OFFSET
+    nHead = Clamp(nHead, ROS_HEAD_CLAMP_MIN, ROS_HEAD_CLAMP_MAX)
     CVar.nPos_Servo = nHead
     OLLO(1, const.OLLO_JOINT_POSITION).write(nHead)
 
@@ -187,7 +195,7 @@ def InitBridge():
 
     # Lleva a postura lista para dejarlo arrancado estable
     Motion_Ready(1)
-    # Algunas motions de ready pueden mover la cabeza; re-centra al final.
+    # Algunas motions de ready pueden mover la cabeza; re-centra (512 = centro nominal).
     SetHeadRaw(ROS_HEAD_CENTER)
 
 def HandleRosRemocon():
@@ -201,7 +209,7 @@ def HandleRosRemocon():
         PlayRosMotionPage(int(nValue - ROS_MOTION_BASE))
         return True
 
-    # Head raw
+    # Head raw: 30000 + raw (0..1023), ej. 30512=center, 30680=left, 30344=right
     if (nValue >= ROS_HEAD_MIN) and (nValue <= ROS_HEAD_MAX):
         SetHeadRaw(int(nValue - ROS_HEAD_BASE))
         return True
@@ -223,9 +231,11 @@ def HandleRosRemocon():
     # Control commands
     if nValue == ROS_CMD_READY:
         Motion_Ready(1)
+        SetHeadRaw(ROS_HEAD_CENTER)
         return True
     if nValue == ROS_CMD_FIGHT_READY:
         Motion_Ready(2)
+        SetHeadRaw(ROS_HEAD_CENTER)
         return True
     if nValue == ROS_CMD_TORQUE_ON:
         TorqAll(True)
