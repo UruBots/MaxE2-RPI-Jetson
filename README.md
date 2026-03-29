@@ -20,6 +20,7 @@ Proyecto para controlar un robot basado en ROBOTIS CM-550 y servos Dynamixel des
   - [Conexión UART (Jetson Nano)](#conexión-uart-jetson-nano)
   - [Servos Dynamixel](#servos-dynamixel)
 - [Object Tracking](#object-tracking)
+- [Launchers (max_bringup)](src/max_bringup/doc/LAUNCHERS.md)
 - [Recursos](#recursos)
 
 ---
@@ -894,6 +895,8 @@ Mensajes y servicios custom:
   - Pensado para reutilizar las motions `.mtn3` oficiales del `MAX-E2` sin usar `dynamixel_sdk` como transporte de runtime
 
 ### max_bringup
+
+Índice de **todos** los launchers (acción, nodos y notas): [`src/max_bringup/doc/LAUNCHERS.md`](src/max_bringup/doc/LAUNCHERS.md).
 
 **Launch files:**
 
