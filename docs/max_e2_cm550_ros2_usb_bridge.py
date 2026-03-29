@@ -40,7 +40,6 @@ ROS_LED_MAGENTA = 20003
 ROS_HEAD_BASE = 30000
 ROS_HEAD_MIN = ROS_HEAD_BASE
 ROS_HEAD_MAX = ROS_HEAD_BASE + 1023
-ROS_HEAD_CENTER = 512
 
 ROS_CMD_READY = 40000
 ROS_CMD_FIGHT_READY = 40001
@@ -52,6 +51,9 @@ ROS_VEL_BASE = 50000
 # Ajuste fino de rango de cabeza para no forzar mecánica
 ROS_HEAD_CLAMP_MIN = 280
 ROS_HEAD_CLAMP_MAX = 760
+# Centro nominal de cabeza dentro del rango clamp.
+# Ajusta este valor si mecánicamente tu horn no queda al centro.
+ROS_HEAD_CENTER = int((ROS_HEAD_CLAMP_MIN + ROS_HEAD_CLAMP_MAX) / 2)
 
 nMotion_Ready = -1
 
@@ -180,11 +182,13 @@ def InitBridge():
     # Apaga LED de body y centra cabeza
     DXL(254).write8(65, 0)
     LedPwm(0, 0)
-    # Ajusta ROS_HEAD_CENTER si tu horn de cabeza no queda centrado en 512.
+    # Primer centrado antes de postura inicial.
     SetHeadRaw(ROS_HEAD_CENTER)
 
     # Lleva a postura lista para dejarlo arrancado estable
     Motion_Ready(1)
+    # Algunas motions de ready pueden mover la cabeza; re-centra al final.
+    SetHeadRaw(ROS_HEAD_CENTER)
 
 def HandleRosRemocon():
     if rc.received() != True:
