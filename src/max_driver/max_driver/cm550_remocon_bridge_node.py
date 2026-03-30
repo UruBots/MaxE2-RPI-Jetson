@@ -35,6 +35,23 @@ class Cm550RemoconBridgeNode(Node):
         self._command_sequences = self._parse_command_sequences(self._command_sequences_raw)
         self._preset_map = self._parse_preset_map(self._preset_map_raw)
         self._led_map = self._parse_preset_map(self._led_preset_map_raw)
+        sample = list(self._command_map.keys())[:8]
+        self.get_logger().info(
+            f'command_map: {len(self._command_map)} entradas (ej. {sample})'
+        )
+        if not self._command_map:
+            if self._command_map_raw.strip():
+                self.get_logger().error(
+                    'command_map no pudo parsearse: revisa el formato YAML (comillas, comas).'
+                )
+            else:
+                self.get_logger().error(
+                    'command_map vacío: el puente no ejecutará acciones. '
+                    'Comprueba que el YAML define cm550_remocon_bridge_node/ros__parameters/command_map.'
+                )
+        self.get_logger().info(
+            f'command_sequences: {len(self._command_sequences)} entradas'
+        )
         self._last_motion_command = None
         self._last_motion_page = None
         self._last_head_raw = None
@@ -57,6 +74,15 @@ class Cm550RemoconBridgeNode(Node):
         self.create_subscription(UInt16, self._speed_topic, self._on_speed_cmd, 10)
 
         self._open_serial()
+        if self._serial is None:
+            self.get_logger().error(
+                'Serial no abierto: los paquetes no llegan al CM-550. '
+                'Comprueba permisos udev, el cable USB y el dispositivo en el puerto configurado.'
+            )
+        else:
+            self.get_logger().info(
+                f'Serial OK: {self._port} @ {self._baudrate} baud'
+            )
         self.get_logger().info(
             f'cm550_remocon_bridge_node listo: port={self._port}, motion={self._motion_command_topic}, '
             f'head={self._head_raw_topic}, led={self._led_preset_topic}'
@@ -199,7 +225,7 @@ class Cm550RemoconBridgeNode(Node):
             try:
                 mapping[command.strip().lower()] = int(page.strip())
             except ValueError:
-                self.get_logger().warn(f'command_map invalido: {entry}')
+                self.get_logger().warning(f'command_map invalido: {entry}')
         return mapping
 
     def _parse_command_sequences(self, raw_sequences):
@@ -217,7 +243,7 @@ class Cm550RemoconBridgeNode(Node):
                 try:
                     pages.append(int(token))
                 except ValueError:
-                    self.get_logger().warn(f'command_sequences invalido: {entry}')
+                    self.get_logger().warning(f'command_sequences invalido: {entry}')
                     pages = []
                     break
             if pages:
@@ -234,7 +260,7 @@ class Cm550RemoconBridgeNode(Node):
             try:
                 mapping[key.strip().lower()] = int(value.strip())
             except ValueError:
-                self.get_logger().warn(f'mapa invalido: {entry}')
+                self.get_logger().warning(f'mapa invalido: {entry}')
         return mapping
 
     def _normalize_command(self, raw_command):
@@ -349,7 +375,7 @@ class Cm550RemoconBridgeNode(Node):
             if self._ignore_unknown:
                 self.get_logger().warning(f'Comando sin mapa (ignorado): {command}')
                 return
-            self.get_logger().warn(f'Comando sin mapa: {command}')
+            self.get_logger().warning(f'Comando sin mapa: {command}')
             return
         page = self._command_map[command]
         self._cancel_sequence()
@@ -384,7 +410,7 @@ class Cm550RemoconBridgeNode(Node):
         if not key:
             return
         if key not in self._preset_map:
-            self.get_logger().warn(f'Preset cabeza desconocido: {key}')
+            self.get_logger().warning(f'Preset cabeza desconocido: {key}')
             return
         self._send_head_raw(self._preset_map[key], f'head_preset:{key}')
 
@@ -401,7 +427,7 @@ class Cm550RemoconBridgeNode(Node):
         if not key:
             return
         if key not in self._led_map:
-            self.get_logger().warn(f'Preset LED desconocido: {key}')
+            self.get_logger().warning(f'Preset LED desconocido: {key}')
             return
         self._send_led_value(self._led_map[key], f'led_preset:{key}')
 

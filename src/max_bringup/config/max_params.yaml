@@ -176,6 +176,7 @@ dynamixel_node:
 
 twist_to_motion_node:
   ros__parameters:
+    cmd_vel_topic: '/cmd_vel'
     motion_topic: '/max/motion_cmd'
     forward_command: 'walk'
     backward_command: 'reverse'

@@ -10,6 +10,7 @@ class TwistToMotionNode(Node):
     def __init__(self):
         super().__init__('twist_to_motion_node')
 
+        self.declare_parameter('cmd_vel_topic', '/cmd_vel')
         self.declare_parameter('motion_topic', '/max/motion_cmd')
         self.declare_parameter('forward_command', 'walk')
         self.declare_parameter('backward_command', 'reverse')
@@ -25,6 +26,7 @@ class TwistToMotionNode(Node):
         self.declare_parameter('linear_speed_full_scale', 0.4)  # m/s que equivale a vel máxima
         self.declare_parameter('republish_interval_sec', 0.0)
 
+        self._cmd_vel_topic = self.get_parameter('cmd_vel_topic').get_parameter_value().string_value
         self.motion_topic = self.get_parameter('motion_topic').get_parameter_value().string_value
         self.forward_command = self.get_parameter('forward_command').get_parameter_value().string_value
         self.backward_command = self.get_parameter('backward_command').get_parameter_value().string_value
@@ -44,7 +46,7 @@ class TwistToMotionNode(Node):
 
         self.pub = self.create_publisher(String, self.motion_topic, 10)
         self.speed_pub = self.create_publisher(UInt16, self.speed_topic, 10)
-        self.create_subscription(Twist, '/cmd_vel', self._on_twist, 10)
+        self.create_subscription(Twist, self._cmd_vel_topic, self._on_twist, 10)
 
         self._last_cmd = None
         self._last_speed = None
@@ -53,7 +55,7 @@ class TwistToMotionNode(Node):
             self.create_timer(self._republish_interval, self._on_republish_timer)
 
         self.get_logger().info(
-            f'twist_to_motion_node listo: /cmd_vel -> {self.motion_topic} y vel -> {self.speed_topic}'
+            f'twist_to_motion_node listo: {self._cmd_vel_topic} -> {self.motion_topic} y vel -> {self.speed_topic}'
             + (f', republish {self._republish_interval}s' if self._republish_interval > 0.0 else '')
         )
 
