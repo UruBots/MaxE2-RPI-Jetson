@@ -11,6 +11,7 @@ except ImportError:
 
 
 ADDR_REMOCON_TX_DATA = 59
+_IGNORE_PRESET_PLACEHOLDERS = frozenset({'false', 'true', 'none', 'null'})
 
 
 class LedOlloBridgeNode(Node):
@@ -125,7 +126,7 @@ class LedOlloBridgeNode(Node):
 
     def _on_preset_cmd(self, msg):
         key = msg.data.strip().lower()
-        if not key:
+        if not key or key in _IGNORE_PRESET_PLACEHOLDERS:
             return
         if key not in self._preset_map:
             self.get_logger().warn(f'Preset LED desconocido: {key}')

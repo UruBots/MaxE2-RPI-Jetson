@@ -7,6 +7,13 @@ from std_msgs.msg import String, UInt16
 from max_interfaces.msg import AprilTagArray
 
 
+def _sanitize_led_preset(raw: str, fallback: str) -> str:
+    s = (raw or '').strip().lower()
+    if s in ('', 'false', 'true', 'none', 'null'):
+        return fallback
+    return s
+
+
 class AprilTagHeadSearchNode(Node):
     """Search and track an AprilTag using head, LEDs and body motions."""
 
@@ -111,18 +118,22 @@ class AprilTagHeadSearchNode(Node):
         self._reverse_motion_command = self.get_parameter(
             'reverse_motion_command'
         ).get_parameter_value().string_value
-        self._search_led_command = self.get_parameter(
-            'search_led_command'
-        ).get_parameter_value().string_value
-        self._tracking_led_command = self.get_parameter(
-            'tracking_led_command'
-        ).get_parameter_value().string_value
-        self._centered_led_command = self.get_parameter(
-            'centered_led_command'
-        ).get_parameter_value().string_value
-        self._lost_led_command = self.get_parameter(
-            'lost_led_command'
-        ).get_parameter_value().string_value
+        self._search_led_command = _sanitize_led_preset(
+            self.get_parameter('search_led_command').get_parameter_value().string_value,
+            'red',
+        )
+        self._tracking_led_command = _sanitize_led_preset(
+            self.get_parameter('tracking_led_command').get_parameter_value().string_value,
+            'blue',
+        )
+        self._centered_led_command = _sanitize_led_preset(
+            self.get_parameter('centered_led_command').get_parameter_value().string_value,
+            'magenta',
+        )
+        self._lost_led_command = _sanitize_led_preset(
+            self.get_parameter('lost_led_command').get_parameter_value().string_value,
+            'off',
+        )
 
         self._scan_min_raw = self.get_parameter('scan_min_raw').get_parameter_value().integer_value
         self._scan_max_raw = self.get_parameter('scan_max_raw').get_parameter_value().integer_value

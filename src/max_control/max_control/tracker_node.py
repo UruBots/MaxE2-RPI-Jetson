@@ -5,6 +5,14 @@ from std_msgs.msg import String, UInt16
 from max_interfaces.msg import Detection
 
 
+def _sanitize_led_preset(raw: str, fallback: str) -> str:
+    """Evita publicar 'false'/'true' como nombre de preset (YAML bool o JSON mal tipado)."""
+    s = (raw or '').strip().lower()
+    if s in ('', 'false', 'true', 'none', 'null'):
+        return fallback
+    return s
+
+
 class TrackerNode(Node):
     """Track objects using head, LEDs and optional body motions."""
 
@@ -70,18 +78,22 @@ class TrackerNode(Node):
         self.search_head_enabled = (
             self.get_parameter('search_head_enabled').get_parameter_value().bool_value
         )
-        self.search_led_command = self.get_parameter(
-            'search_led_command'
-        ).get_parameter_value().string_value
-        self.tracking_led_command = self.get_parameter(
-            'tracking_led_command'
-        ).get_parameter_value().string_value
-        self.centered_led_command = self.get_parameter(
-            'centered_led_command'
-        ).get_parameter_value().string_value
-        self.lost_led_command = self.get_parameter(
-            'lost_led_command'
-        ).get_parameter_value().string_value
+        self.search_led_command = _sanitize_led_preset(
+            self.get_parameter('search_led_command').get_parameter_value().string_value,
+            'red',
+        )
+        self.tracking_led_command = _sanitize_led_preset(
+            self.get_parameter('tracking_led_command').get_parameter_value().string_value,
+            'blue',
+        )
+        self.centered_led_command = _sanitize_led_preset(
+            self.get_parameter('centered_led_command').get_parameter_value().string_value,
+            'magenta',
+        )
+        self.lost_led_command = _sanitize_led_preset(
+            self.get_parameter('lost_led_command').get_parameter_value().string_value,
+            'off',
+        )
         self.head_dead_zone_px = self.get_parameter(
             'head_dead_zone_px'
         ).get_parameter_value().double_value

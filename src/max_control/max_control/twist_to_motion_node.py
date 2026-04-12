@@ -20,6 +20,9 @@ class TwistToMotionNode(Node):
         self.declare_parameter('linear_threshold', 0.05)
         self.declare_parameter('angular_threshold', 0.05)
         self.declare_parameter('prefer_turn_over_forward', True)
+        # Solo tratar como giro prioritario si |ω| supera claramente a |v| (evita que un angular
+        # residual del teclado anule walk cuando vas casi recto).
+        self.declare_parameter('turn_angular_margin', 0.03)
         self.declare_parameter('speed_topic', '/max/profile_velocity')
         self.declare_parameter('profile_velocity_max', 120)
         self.declare_parameter('profile_velocity_min', 0)
@@ -37,6 +40,9 @@ class TwistToMotionNode(Node):
         self.ang_th = self.get_parameter('angular_threshold').get_parameter_value().double_value
         self.prefer_turn = (
             self.get_parameter('prefer_turn_over_forward').get_parameter_value().bool_value
+        )
+        self._turn_margin = max(
+            0.0, self.get_parameter('turn_angular_margin').get_parameter_value().double_value
         )
         self.speed_topic = self.get_parameter('speed_topic').get_parameter_value().string_value
         self.pv_max = max(0, self.get_parameter('profile_velocity_max').get_parameter_value().integer_value)
@@ -110,7 +116,11 @@ class TwistToMotionNode(Node):
             self._publish_if_changed(self.forward_command)
             self._publish_speed(lin)
             return
-        if self.prefer_turn and abs_ang >= self.ang_th and abs_ang >= abs_lin:
+        if (
+            self.prefer_turn
+            and abs_ang >= self.ang_th
+            and abs_ang >= abs_lin + self._turn_margin
+        ):
             self._publish_if_changed(self.left_command if ang > 0 else self.right_command)
             self._publish_speed(0.0)
             return

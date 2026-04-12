@@ -186,7 +186,9 @@ twist_to_motion_node:
     linear_threshold: 0.05
     angular_threshold: 0.05
     prefer_turn_over_forward: true
+    turn_angular_margin: 0.03
     speed_topic: '/max/profile_velocity'
     profile_velocity_max: 120
     profile_velocity_min: 0
     linear_speed_full_scale: 0.4
+    republish_interval_sec: 0.15

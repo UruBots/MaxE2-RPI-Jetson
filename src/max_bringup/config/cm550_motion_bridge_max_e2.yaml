@@ -62,12 +62,15 @@ twist_to_motion_node:
     linear_threshold: 0.05
     angular_threshold: 0.05
     prefer_turn_over_forward: true
+    # Si al pulsar solo “adelante” el robot gira, sube un poco (p. ej. 0.05).
+    turn_angular_margin: 0.03
     speed_topic: '/max/profile_velocity'
     profile_velocity_max: 120
     profile_velocity_min: 0
     linear_speed_full_scale: 0.4  # m/s que equivalen a vel máxima enviada
-    # >0: republica el último comando de motion mientras /cmd_vel siga activo (por si el puente debe reenviar)
-    republish_interval_sec: 0.0
+    # >0: republica walk/stop/… mientras sigas pulsando (un solo String suele bastar para el puente,
+    # pero el failsafe y algunos bucles rc.read() en CM-550 se benefician de tráfico periódico).
+    republish_interval_sec: 0.15
 
 motion_mux_node:
   ros__parameters:

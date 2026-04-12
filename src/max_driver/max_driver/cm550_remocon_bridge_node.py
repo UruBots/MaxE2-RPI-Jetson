@@ -16,6 +16,9 @@ except ImportError:
 REMOCON_HEADER_0 = 0xFF
 REMOCON_HEADER_1 = 0x55
 MOTION_BASE = 10000
+
+# Valores que suelen llegar como String por bool/JSON mal enlazados; no son presets reales.
+_IGNORE_PRESET_PLACEHOLDERS = frozenset({'false', 'true', 'none', 'null'})
 LED_OFF = 20000
 LED_RED = 20001
 LED_BLUE = 20002
@@ -407,7 +410,7 @@ class Cm550RemoconBridgeNode(Node):
 
     def _on_head_preset(self, msg):
         key = msg.data.strip().lower()
-        if not key:
+        if not key or key in _IGNORE_PRESET_PLACEHOLDERS:
             return
         if key not in self._preset_map:
             self.get_logger().warning(f'Preset cabeza desconocido: {key}')
@@ -424,7 +427,7 @@ class Cm550RemoconBridgeNode(Node):
 
     def _on_led_preset(self, msg):
         key = msg.data.strip().lower()
-        if not key:
+        if not key or key in _IGNORE_PRESET_PLACEHOLDERS:
             return
         if key not in self._led_map:
             self.get_logger().warning(f'Preset LED desconocido: {key}')
