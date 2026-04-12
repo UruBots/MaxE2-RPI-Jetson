@@ -117,6 +117,53 @@ Mismo equipo, dos ventanas SSH: en una el `launch` con `include_teleop:=false`, 
 | `include_teleop` | `false`: no arranca `teleop_twist_keyboard` dentro del launch (para combinar con sesión `ssh -t` o evitar fallos sin X11). |
 | `config_file` | YAML compartido (por defecto `cm550_motion_bridge_max_e2.yaml`). |
 
+## Ver la cámara (SSH o remoto)
+
+Los nodos de visión publican típicamente **`/max/camera/image_raw`** (y a veces **`/max/debug_view`**, **`/max/apriltag_debug_image`**, etc., según el launch).
+
+### Opción A — Misma red Wi‑Fi/Ethernet, **sin** meter video por SSH (recomendado)
+
+En el **PC** (no hace falta abrir la imagen *dentro* de la sesión SSH):
+
+1. Mismo **`ROS_DOMAIN_ID`** que en la robot (por defecto `0`).
+2. Firewall que permita **multicast DDS** entre PC y robot (misma subred suele bastar).
+3. En el PC, con ROS 2 instalado:
+
+```bash
+source /opt/ros/humble/setup.bash   # o jazzy
+ros2 topic list | grep max/camera
+ros2 run rqt_image_view rqt_image_view /max/camera/image_raw
+```
+
+Si no ves topics, el nodo de cámara no está corriendo en la robot o la red bloquea DDS; entonces usa B o C.
+
+### Opción B — **SSH con reenvío X11** (ventana en tu pantalla)
+
+Desde el PC (con servidor X: Linux, WSLg, XQuartz en macOS):
+
+```bash
+ssh -X usuario@IP_ROBOT
+# en la sesión del robot:
+source /opt/ros/humble/setup.bash && source ~/tu_ws/install/setup.bash
+ros2 run rqt_image_view rqt_image_view /max/camera/image_raw
+```
+
+Puede ir lento y fallar si `DISPLAY` no está bien; en macOS suele requerir XQuartz abierto.
+
+### Opción C — Un **snapshot** por SSH (sin GUI)
+
+En la robot, con el topic publicando:
+
+```bash
+ros2 run image_view image_saver --ros-args -r image:=/max/camera/image_raw
+```
+
+Genera imágenes en el directorio actual; copia al PC con **`scp`**. Para una sola captura, para el nodo tras unos segundos o usa un script que guarde un frame.
+
+### Opción D — DDS por IP fija (si no hay multicast)
+
+Si A falla por red corporativa/VPN, configura **CycloneDDS** o **Fast DDS** con *peers* por IP (documentación de ROS 2 / tu distro) para que el PC descubra la robot sin multicast.
+
 ## Ver también
 
 - Índice de launchers: [LAUNCHERS.md](LAUNCHERS.md)
