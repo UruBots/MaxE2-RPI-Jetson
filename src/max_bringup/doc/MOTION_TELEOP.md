@@ -74,9 +74,25 @@ Edita `command_map` para que los números coincidan con las páginas reales del 
 
 `python3 scripts/extract_cm550_motion_map.py ruta/al/archivo.mtn3`
 
-## Si “se envía” pero no se mueve
+## Si ves `Remocon enviado: value=10103` y el robot no camina
 
-- Páginas distintas a las cargadas en la CM-550.
+Ese log significa que **ROS ya hizo bien su parte**: el valor **10103** (`10000 + 103`) y el paquete `FF 55 …` son coherentes con el protocolo Remocon del repo. Si no hay movimiento, el fallo está **en la CM-550** (no recibe, no interpreta o no tiene esas motions).
+
+Comprueba en este orden:
+
+1. **Modo Play y script en marcha** — `MODE` verde, `START` pulsado; sin `R+ Task` / `R+ Manager` ocupando el puerto. Detalle: [`docs/INTEGRATION_MAX_E2.md`](../../docs/INTEGRATION_MAX_E2.md) § 3.1.
+2. **Script con `rc.read()` y USB como remoto** — En la referencia [`docs/max_e2_cm550_ros2_usb_bridge.py`](../../docs/max_e2_cm550_ros2_usb_bridge.py), `InitBridge()` hace `etc.write8(35, 0)` y `etc.write8(43, 2)` para que los paquetes por **micro-USB** lleguen a `rc.read()`. Si tu `.py` no hace algo equivalente, la CM-550 puede ignorar todo lo que envía la RPi.
+3. **¿Reacciona a otras órdenes?** — Desde la misma sesión ROS:
+   - `ros2 topic pub --once /max/motion_cmd std_msgs/msg/String "{data: 'stand'}"` (o `hello`, `sitdown` según tu `command_map`).
+   - Si **nada** mueve el cuerpo, el problema no es la página 103: es remocon no consumido o script incorrecto.
+4. **Página directa (sin nombre)** — Publica un `UInt16` en `/max/motion_page_cmd` (tema del puente, p. ej. página **3** o **1** si existen en tu `.mtn3`):
+   - `ros2 topic pub --once /max/motion_page_cmd std_msgs/msg/UInt16 "{data: 3}"`
+   - Si esto tampoco hace nada, confirma `page_topic` en el YAML y que el firmware trate `10000+page` igual que en la referencia.
+5. **`.mtn3` del MAX E2** — Los índices **101** y **103** del “walk” deben existir en el motion cargado en la CM-550. Si tu proyecto usa otro `.mtn3`, ajusta `command_map` con los números reales (puedes usar `scripts/extract_cm550_motion_map.py`).
+
+## Si “se envía” pero no se mueve (resumen)
+
+- Páginas distintas a las cargadas en la CM-550 o script sin el caso especial `103 → Motion_Play(101,103)` como en la referencia.
 - Script distinto al de referencia (otro manejo de `10000 + page`).
 - `ignore_unknown_commands: true` y el nombre del string no está en el mapa (mira logs; sube a `warn` temporalmente).
 - Reenvío: con `republish_interval_sec` > 0 en `twist_to_motion_node` se repite el mismo comando mientras mantienes el Twist (por si el firmware espera refresco).

@@ -3,8 +3,8 @@ from pycm import *
 # ============================================================
 # MAX E2 / CM-550 - ROS 2 USB bridge task
 # ------------------------------------------------------------
-# Protocolo esperado por rc.read():
-#   10000 + motion_page   -> ejecuta motion.play(page)
+# Protocolo esperado por rc.read() (alineado con 01_ENG2 HandleRosRemocon + perfil 50000+):
+#   10000 + motion_page   -> motion.play(page); excepción: página 103 -> motion.play(101, 103)
 #   20000                 -> LED OFF
 #   20001                 -> LED RED
 #   20002                 -> LED BLUE
@@ -163,6 +163,11 @@ def SetHeadRaw(nHead):
     OLLO(1, const.OLLO_JOINT_POSITION).write(nHead)
 
 def InitBridge():
+    # Diferencias frente al arranque completo de 01_ENG2 (nTest==0): aquí no se ejecuta
+    # Motion_Play_And_Wait(60) antes del torque off ni Offset_Read() al final. Si el robot
+    # arranca desde postura rara o el walk falla por calibración, prueba primero el flujo
+    # oficial ENG2 una vez o incorpora esas llamadas desde el .py grande.
+    #
     # Importante:
     # 35 = Task Print Port -> BLE
     # 43 = Remote Port     -> USB
@@ -199,7 +204,8 @@ def InitBridge():
     SetHeadRaw(ROS_HEAD_CENTER)
 
 def HandleRosRemocon():
-    if rc.received() != True:
+    # Aceptar True o valores truthy numéricos que devuelva pycm.
+    if not rc.received():
         return False
 
     nValue = int(rc.read())
