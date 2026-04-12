@@ -11,7 +11,7 @@ a menudo no lo tienen (termios: Inappropriate ioctl for device). Opciones:
 import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, OpaqueFunction
+from launch.actions import DeclareLaunchArgument, LogInfo, OpaqueFunction
 from launch_ros.actions import Node
 
 
@@ -34,7 +34,19 @@ def _launch_setup(context, *args, **kwargs):
     if prefix:
         teleop_kwargs['prefix'] = prefix
 
-    teleop = Node(**teleop_kwargs)
+    actions = []
+    if include_teleop and not prefix:
+        actions.append(
+            LogInfo(
+                msg=(
+                    '[teleop_cm550] teleop_twist_keyboard sin teleop_prefix: muchas veces el launch '
+                    'no asigna TTY al nodo y el teclado no hace nada (o termios error). '
+                    'Opciones: teleop_prefix con xterm/gnome-terminal; o include_teleop:=false '
+                    'y teleop en otra sesión ssh -t; o el script share/max_bringup/scripts/'
+                    'teleop_cm550_one_terminal.sh — ver max_bringup/doc/TELEOP_SSH.md'
+                )
+            )
+        )
 
     # motion_topic desde YAML (p. ej. /max/motion_cmd). No usar /max/motion_cmd_teleop
     # aquí sin motion_mux_node: el puente solo escucha command_topic (/max/motion_cmd).
@@ -55,8 +67,11 @@ def _launch_setup(context, *args, **kwargs):
     )
 
     if include_teleop:
-        return [teleop, twist_mapper, motion_bridge]
-    return [twist_mapper, motion_bridge]
+        actions.append(Node(**teleop_kwargs))
+        actions.extend([twist_mapper, motion_bridge])
+    else:
+        actions.extend([twist_mapper, motion_bridge])
+    return actions
 
 
 def generate_launch_description():

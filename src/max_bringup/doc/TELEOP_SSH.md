@@ -2,6 +2,19 @@
 
 `teleop_cm550_launch.py` arranca `teleop_twist_keyboard`, `twist_to_motion_node` y `cm550_remocon_bridge_node`. El nodo de teclado necesita un **terminal interactivo (TTY)** y, si se lanza con un **prefijo gráfico** (`xterm`, `gnome-terminal`), también un **servidor X** (`DISPLAY`).
 
+## Si “el teleop no hace nada” (ni errores claros)
+
+1. **¿Tienes foco en la ventana correcta?** Con `xterm`/`gnome-terminal`, el teclado solo actúa en **esa** ventana, no en la terminal donde lanzaste `ros2 launch`.
+2. **Comprueba la cadena** (con el stack en marcha):
+   - `ros2 topic echo /cmd_vel` — al pulsar **i** debe cambiar `linear.x`.
+   - `ros2 topic echo /max/motion_cmd` — debe aparecer `walk`, `stop`, etc.
+3. Si **`/cmd_vel` no cambia**, casi siempre es **TTY**: `ros2 launch` no conecta stdin al nodo. **Arreglo rápido (un solo SSH, headless):** tras `source` de ROS y del workspace:
+   ```bash
+   bash "$(ros2 pkg prefix max_bringup)/share/max_bringup/scripts/teleop_cm550_one_terminal.sh"
+   ```
+   Eso levanta mapper + puente en segundo plano y deja el teclado en **esta** terminal.
+4. En **escritorio local**: `ros2 launch max_bringup teleop_cm550_launch.py teleop_prefix:='xterm -hold -e '` (y `sudo apt install xterm` si hace falta).
+
 ## Errores frecuentes
 
 | Mensaje | Causa | Qué hacer |

@@ -427,7 +427,12 @@ class Cm550RemoconBridgeNode(Node):
 
     def _on_led_preset(self, msg):
         key = msg.data.strip().lower()
-        if not key or key in _IGNORE_PRESET_PLACEHOLDERS:
+        if not key:
+            return
+        # ros2 topic pub usa YAML: `{data: off}` se parsea como boolean false → string "false".
+        if key == 'false':
+            key = 'off'
+        elif key in _IGNORE_PRESET_PLACEHOLDERS:
             return
         if key not in self._led_map:
             self.get_logger().warning(f'Preset LED desconocido: {key}')

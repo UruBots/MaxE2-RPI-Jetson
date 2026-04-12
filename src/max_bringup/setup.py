@@ -14,6 +14,7 @@ setup(
         (os.path.join('share', package_name, 'launch'), glob(os.path.join('launch', '*launch.[pxy][yma]*'))),
         (os.path.join('share', package_name, 'config'), glob(os.path.join('config', '*.yaml'))),
         (os.path.join('share', package_name, 'doc'), glob(os.path.join('doc', '*.md'))),
+        (os.path.join('share', package_name, 'scripts'), glob(os.path.join('scripts', '*'))),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
